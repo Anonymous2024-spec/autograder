@@ -36,6 +36,7 @@
 **AutoGrader** is a mobile application developed to automate the grading of hard-copy Multiple Choice Question (MCQ) answer sheets in university settings. Lecturers currently spend several hours manually grading answer sheets, a process that is error-prone and delays feedback to students.
 
 AutoGrader addresses this problem by providing a digital platform where:
+
 - **Admins** manage students, staff, and courses
 - **Lecturers** enter exam questions with answer options and grade students instantly
 - Results and performance analytics are stored and accessible in real time
@@ -47,11 +48,13 @@ The system targets universities and higher institutions, serving as a low-cost, 
 ## ✨ Features
 
 **Admin**
+
 - Register and manage students
 - Register and manage staff/users
 - Register and manage courses
 
 **Lecturer / Tutor**
+
 - Enter MCQ questions and answer options
 - Mark correct answers per question
 - Select a course and student to grade
@@ -59,6 +62,7 @@ The system targets universities and higher institutions, serving as a low-cost, 
 - View and export grade reports
 
 **System**
+
 - Role-based authentication (Admin & Lecturer)
 - Secure JWT-based login
 - Real-time score calculation
@@ -91,15 +95,15 @@ The system follows a **client-server architecture**:
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Mobile Frontend | React Native (Expo) + TypeScript |
-| Navigation | Expo Router |
-| Backend | Node.js + Express.js |
-| Database | MySQL |
-| Authentication | JWT (JSON Web Tokens) |
-| API Communication | REST API (Axios) |
-| Package Manager | Yarn (frontend) / npm (backend) |
+| Layer             | Technology                       |
+| ----------------- | -------------------------------- |
+| Mobile Frontend   | React Native (Expo) + TypeScript |
+| Navigation        | Expo Router                      |
+| Backend           | Node.js + Express.js             |
+| Database          | MySQL                            |
+| Authentication    | JWT (JSON Web Tokens)            |
+| API Communication | REST API (Axios)                 |
+| Package Manager   | Yarn (frontend) / npm (backend)  |
 
 ---
 
@@ -227,16 +231,17 @@ AutoGrader/
 
 The database consists of the following tables:
 
-| Table | Description |
-|---|---|
-| `USERS` | Stores admin and lecturer accounts with roles |
-| `STUDENTS` | Stores student details linked to a course |
-| `COURSE` | Stores course names and codes |
-| `QUESTIONS` | Stores MCQ questions per course unit |
-| `OPTIONS` | Stores answer options per question with correct flag |
-| `MARKS` | Stores calculated marks per student, course, and question |
+| Table       | Description                                               |
+| ----------- | --------------------------------------------------------- |
+| `USERS`     | Stores admin and lecturer accounts with roles             |
+| `STUDENTS`  | Stores student details linked to a course                 |
+| `COURSE`    | Stores course names and codes                             |
+| `QUESTIONS` | Stores MCQ questions per course unit                      |
+| `OPTIONS`   | Stores answer options per question with correct flag      |
+| `MARKS`     | Stores calculated marks per student, course, and question |
 
 **Key Relationships:**
+
 - A `STUDENT` is enrolled in a `COURSE`
 - A `QUESTION` belongs to a `COURSE`
 - An `OPTION` belongs to a `QUESTION` and flags the correct answer
@@ -247,12 +252,15 @@ The database consists of the following tables:
 ## 📊 System Diagrams
 
 ### Use Case Diagram
+
 ![Use Case Diagram](./diagrams/usecase.png)
 
 ### System Flowchart
+
 ![System Flowchart](./diagrams/flowchart.png)
 
 ### Entity Relationship (ER) Diagram
+
 ![ER Diagram](./diagrams/ER.png)
 
 ---
@@ -261,50 +269,50 @@ The database consists of the following tables:
 
 ### Auth
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/auth/login` | Login user and return JWT token | Public |
+| Method | Endpoint          | Description                     | Access |
+| ------ | ----------------- | ------------------------------- | ------ |
+| POST   | `/api/auth/login` | Login user and return JWT token | Public |
 
 ### Users
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| GET | `/api/users` | Get all users | Admin |
-| POST | `/api/users` | Register a new staff/user | Admin |
-| DELETE | `/api/users/:id` | Delete a user | Admin |
+| Method | Endpoint         | Description               | Access |
+| ------ | ---------------- | ------------------------- | ------ |
+| GET    | `/api/users`     | Get all users             | Admin  |
+| POST   | `/api/users`     | Register a new staff/user | Admin  |
+| DELETE | `/api/users/:id` | Delete a user             | Admin  |
 
 ### Students
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| GET | `/api/students` | Get all students | Admin, Lecturer |
-| POST | `/api/students` | Register a new student | Admin |
-| GET | `/api/students/:id` | Get student by ID | Admin, Lecturer |
-| DELETE | `/api/students/:id` | Delete a student | Admin |
+| Method | Endpoint            | Description            | Access          |
+| ------ | ------------------- | ---------------------- | --------------- |
+| GET    | `/api/students`     | Get all students       | Admin, Lecturer |
+| POST   | `/api/students`     | Register a new student | Admin           |
+| GET    | `/api/students/:id` | Get student by ID      | Admin, Lecturer |
+| DELETE | `/api/students/:id` | Delete a student       | Admin           |
 
 ### Courses
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| GET | `/api/courses` | Get all courses | Admin, Lecturer |
-| POST | `/api/courses` | Register a new course | Admin |
-| DELETE | `/api/courses/:id` | Delete a course | Admin |
+| Method | Endpoint           | Description           | Access          |
+| ------ | ------------------ | --------------------- | --------------- |
+| GET    | `/api/courses`     | Get all courses       | Admin, Lecturer |
+| POST   | `/api/courses`     | Register a new course | Admin           |
+| DELETE | `/api/courses/:id` | Delete a course       | Admin           |
 
 ### Questions & Options
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| GET | `/api/questions/:courseUnitId` | Get questions for a course unit | Lecturer |
-| POST | `/api/questions` | Add a new question with options | Lecturer |
-| DELETE | `/api/questions/:id` | Delete a question | Lecturer |
+| Method | Endpoint                       | Description                     | Access   |
+| ------ | ------------------------------ | ------------------------------- | -------- |
+| GET    | `/api/questions/:courseUnitId` | Get questions for a course unit | Lecturer |
+| POST   | `/api/questions`               | Add a new question with options | Lecturer |
+| DELETE | `/api/questions/:id`           | Delete a question               | Lecturer |
 
 ### Grading / Marks
 
-| Method | Endpoint | Description | Access |
-|---|---|---|---|
-| POST | `/api/marks/grade` | Grade a student and save marks | Lecturer |
-| GET | `/api/marks/:studentId` | Get marks for a student | Admin, Lecturer |
-| GET | `/api/marks/report/:courseId` | Get full course grade report | Admin, Lecturer |
+| Method | Endpoint                      | Description                    | Access          |
+| ------ | ----------------------------- | ------------------------------ | --------------- |
+| POST   | `/api/marks/grade`            | Grade a student and save marks | Lecturer        |
+| GET    | `/api/marks/:studentId`       | Get marks for a student        | Admin, Lecturer |
+| GET    | `/api/marks/report/:courseId` | Get full course grade report   | Admin, Lecturer |
 
 > All protected routes require the `Authorization: Bearer <token>` header.
 
@@ -313,11 +321,13 @@ The database consists of the following tables:
 ## 👥 User Roles
 
 ### Admin
+
 - Full access to the system
 - Registers students, staff, and courses
 - Cannot grade students directly
 
 ### Lecturer / Tutor
+
 - Can register courses and enter questions
 - Grades students by selecting a course and evaluating answers
 - Views grade reports and analytics
@@ -376,6 +386,7 @@ test: add or update tests
 ```
 
 ### Code Style
+
 - Use **TypeScript** on the frontend
 - Use **ESLint + Prettier** for formatting
 - Keep functions small and well-named
@@ -385,14 +396,14 @@ test: add or update tests
 
 ## 👨‍💻 Team
 
-| Name | Reg No | Role |
-|---|---|---|
-| Oryema Walter | 23/U/2258/GIM/PS | Team Lead / Developer |
-| Ategeka Racheal | 23/U/3984/GIM | Developer |
-| Asaba Godfrey | 23/U/2197/GIM/PS | Developer |
+| Name            | Reg No           | Role                  |
+| --------------- | ---------------- | --------------------- |
+| Oryema Walter   | 23/U/2258/GIM/PS | Team Lead / Developer |
+| Ategeka Racheal | 23/U/3984/GIM    | Developer             |
+| Asaba Godfrey   | 23/U/2197/GIM/PS | Developer             |
 
 **Institution:** Gulu University — Department of Computer Science
-**Supervisor:** *(Name to be added)*
+**Supervisor:** _(Dr. Olango P)_
 **Academic Year:** 2025/2026
 
 ---
