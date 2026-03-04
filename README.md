@@ -1,6 +1,6 @@
 # 📝 AutoGrader
 
-> A mobile-based MCQ AutoMarker system for university assessments — automating the grading of multiple-choice questions, reducing lecturer workload, and delivering instant student feedback.
+> A mobile-based MCQ AutoMarker system for university assessments automating the grading of multiple-choice questions, reducing lecturer workload, and delivering instant student feedback.
 
 ![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
 ![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-blue)
@@ -33,7 +33,7 @@
 
 ## 📖 About the Project
 
-**AutoGrader** is a mobile application developed to automate the grading of hard-copy Multiple Choice Question (MCQ) answer sheets in university settings. Lecturers currently spend several hours manually grading answer sheets — a process that is error-prone and delays feedback to students.
+**AutoGrader** is a mobile application developed to automate the grading of hard-copy Multiple Choice Question (MCQ) answer sheets in university settings. Lecturers currently spend several hours manually grading answer sheets, a process that is error-prone and delays feedback to students.
 
 AutoGrader addresses this problem by providing a digital platform where:
 - **Admins** manage students, staff, and courses
@@ -253,7 +253,7 @@ The database consists of the following tables:
 ![System Flowchart](./diagrams/flowchart.png)
 
 ### Entity Relationship (ER) Diagram
-![ER Diagram](./diagrams/ER_Diagram.png)
+![ER Diagram](./diagrams/ER.png)
 
 ---
 
