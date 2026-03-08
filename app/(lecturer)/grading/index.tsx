@@ -1,9 +1,9 @@
 import { View, Text } from "react-native";
 
-export default function StaffScreen() {
+export default function GradingScreen() {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Staff Screen</Text>
+      <Text>Grading Screen</Text>
     </View>
   );
 }
