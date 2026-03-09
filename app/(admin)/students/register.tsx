@@ -1,8 +1,8 @@
-import { View, Text } from "react-native";
+import { View, Text } from 'react-native';
 
-export default function RegisterStudentScreen() {
+export default function RegisterStudent() {
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+    <View>
       <Text>Register Student Screen</Text>
     </View>
   );
