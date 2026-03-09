@@ -8,15 +8,15 @@ export default function AdminDashboard() {
     <View>
       <Text>Admin Dashboard</Text>
 
-      <TouchableOpacity onPress={() => router.push("/students/index")}>
+      <TouchableOpacity onPress={() => router.push("/(admin)/students")}>
         <Text>Students</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/staff/index")}>
+      <TouchableOpacity onPress={() => router.push("/(admin)/staff")}>
         <Text>Staff</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/courses/index")}>
+      <TouchableOpacity onPress={() => router.push("/(admin)/courses")}>
         <Text>Courses</Text>
       </TouchableOpacity>
     </View>
