@@ -7,7 +7,6 @@ export default function StudentsScreen() {
   return (
     <View>
       <Text>Students List</Text>
-
       <TouchableOpacity onPress={() => router.push({ pathname: '/students/register' })}>
         <Text>+ Add Student</Text>
       </TouchableOpacity>

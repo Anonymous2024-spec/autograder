@@ -1,9 +1,9 @@
 import { View, Text } from 'react-native';
 
-export default function RegisterStudent() {
+export default function RegisterStaff() {
   return (
     <View>
-      <Text>Register Student Screen</Text>
+      <Text>Register Staff Screen</Text>
     </View>
   );
 }

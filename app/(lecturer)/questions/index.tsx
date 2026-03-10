@@ -1,9 +1,16 @@
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function QuestionsScreen() {
+  const router = useRouter();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Questions Screen</Text>
+    <View>
+      <Text>Questions List</Text>
+
+      <TouchableOpacity onPress={() => router.push({ pathname: '/questions/create' })}>
+        <Text>+ Add Question</Text>
+      </TouchableOpacity>
     </View>
   );
 }

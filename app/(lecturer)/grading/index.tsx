@@ -1,9 +1,16 @@
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function GradingScreen() {
+  const router = useRouter();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Grading Screen</Text>
+    <View>
+      <Text>Select Course & Student</Text>
+
+      <TouchableOpacity onPress={() => router.push({ pathname: '/grading/result' })}>
+        <Text>Start Grading</Text>
+      </TouchableOpacity>
     </View>
   );
 }

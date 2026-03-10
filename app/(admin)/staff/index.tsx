@@ -1,9 +1,16 @@
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function StaffScreen() {
+  const router = useRouter();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Staff Screen</Text>
+    <View>
+      <Text>Staff List</Text>
+
+      <TouchableOpacity onPress={() => router.push({ pathname: '/staff/register' })}>
+        <Text>+ Add Staff</Text>
+      </TouchableOpacity>
     </View>
   );
 }

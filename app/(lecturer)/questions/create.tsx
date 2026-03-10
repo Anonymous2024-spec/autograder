@@ -1,8 +1,8 @@
-import { View, Text } from "react-native";
+import { View, Text } from 'react-native';
 
-export default function CreateQuestionScreen() {
+export default function CreateQuestion() {
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+    <View>
       <Text>Create Question Screen</Text>
     </View>
   );

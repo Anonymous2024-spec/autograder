@@ -1,9 +1,16 @@
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function CoursesScreen() {
+  const router = useRouter();
+
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Courses Screen</Text>
+    <View>
+      <Text>Courses List</Text>
+
+      <TouchableOpacity onPress={() => router.push({ pathname: '/courses/register' })}>
+        <Text>+ Add Course</Text>
+      </TouchableOpacity>
     </View>
   );
 }
