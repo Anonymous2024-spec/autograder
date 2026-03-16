@@ -1,64 +1,65 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Button from '../../../components/Button';
-import Input from '../../../components/Input';
-import { Colors, FontSize, Spacing, Radius } from '../../../constants';
-import { useState } from 'react';
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Button from "../../../components/Button";
+import Input from "../../../components/Input";
+import { Colors, FontSize, Radius, Spacing } from "../../../constants";
 
-export default function RegisterStudent() {
+export default function EditStudent() {
   const router = useRouter();
 
-  // State to store form values
-  const [name, setName] = useState('');
-  const [regNo, setRegNo] = useState('');
-  const [studentNo, setStudentNo] = useState('');
-  const [courseId, setCourseId] = useState('');
+  // Get the student id passed from the list screen
+  const { id } = useLocalSearchParams();
+
+  // Pre-filled form values
+  // TODO: Replace with real API call to fetch student by id
+  const [name, setName] = useState("John Doe");
+  const [regNo, setRegNo] = useState("23/U/1234");
+  const [studentNo, setStudentNo] = useState("2300712345");
+  const [courseId, setCourseId] = useState("1");
 
   // Handle form submission
-  // TODO: Replace with real API call later
   const handleSubmit = () => {
-    // Basic validation
     if (!name || !regNo || !studentNo || !courseId) {
-      alert('Please fill in all fields');
+      alert("Please fill in all fields");
       return;
     }
 
-    // TODO: Send data to API
-    console.log({ name, regNo, studentNo, courseId });
+    // TODO: Send updated data to API
+    console.log("Update student:", { id, name, regNo, studentNo, courseId });
 
-    // Go back to students list after submitting
+    // Go back to students list
     router.back();
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <SafeAreaView style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-
           {/* Form title */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Student Details</Text>
-            <Text style={styles.subtitle}>Fill in the form to register a new student</Text>
+            <Text style={styles.title}>Edit Student</Text>
+            <Text style={styles.subtitle}>
+              Update the student details below
+            </Text>
           </View>
 
           {/* Form fields */}
           <View style={styles.form}>
-
-            {/* Full name input */}
             <Input
               label="Full Name"
               placeholder="e.g. John Doe"
@@ -66,7 +67,6 @@ export default function RegisterStudent() {
               onChangeText={setName}
             />
 
-            {/* Registration number input */}
             <Input
               label="Registration Number"
               placeholder="e.g. 23/U/1234"
@@ -74,7 +74,6 @@ export default function RegisterStudent() {
               onChangeText={setRegNo}
             />
 
-            {/* Student number input */}
             <Input
               label="Student Number"
               placeholder="e.g. 2300712345"
@@ -83,7 +82,6 @@ export default function RegisterStudent() {
               keyboardType="numeric"
             />
 
-            {/* Course ID input */}
             <Input
               label="Course ID"
               placeholder="e.g. 1"
@@ -92,14 +90,8 @@ export default function RegisterStudent() {
               keyboardType="numeric"
             />
 
-            {/* Submit button */}
-            <Button
-              title="Register Student"
-              onPress={handleSubmit}
-            />
-
+            <Button title="Update Student" onPress={handleSubmit} />
           </View>
-
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -107,47 +99,34 @@ export default function RegisterStudent() {
 }
 
 const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Scrollview content padding
   content: {
     padding: Spacing.lg,
   },
-
-  // Title section container
   titleContainer: {
     marginBottom: Spacing.lg,
   },
-
-  // Form title
   title: {
     fontSize: FontSize.xxl,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
-
-  // Form subtitle
   subtitle: {
     fontSize: FontSize.sm,
     color: Colors.subtext,
   },
-
-  // Form container
   form: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 3,
   },
 });
