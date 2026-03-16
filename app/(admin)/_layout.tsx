@@ -10,10 +10,12 @@ export default function AdminLayout() {
         options={{ title: "Register Student" }}
       />
       <Stack.Screen name="staff/index" options={{ title: "Staff" }} />
+      <Stack.Screen name="students/edit" options={{ title: "Edit Student" }} />
       <Stack.Screen
         name="staff/register"
         options={{ title: "Register Staff" }}
       />
+      <Stack.Screen name="staff/edit" options={{ title: "Edit Staff" }} />
       <Stack.Screen name="courses/index" options={{ title: "Courses" }} />
       <Stack.Screen
         name="courses/register"

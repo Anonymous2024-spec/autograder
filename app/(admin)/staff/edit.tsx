@@ -1,41 +1,41 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Button from '../../../components/Button';
-import Input from '../../../components/Input';
-import { Colors, FontSize, Spacing, Radius } from '../../../constants';
-import { useState } from 'react';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Button from "../../../components/Button";
+import Input from "../../../components/Input";
+import { Colors, FontSize, Radius, Spacing } from "../../../constants";
 
-export default function RegisterStaff() {
+export default function EditStaff() {
   const router = useRouter();
 
-  // State to store form values
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Get staff id passed from list screen
+  const { id } = useLocalSearchParams();
 
-  // Role selector state - default is lecturer
-  const [role, setRole] = useState('lecturer');
+  // Pre-filled form values
+  // TODO: Replace with real API call to fetch staff by id
+  const [username, setUsername] = useState("Dr. Okello");
+  const [email, setEmail] = useState("okello@gulu.ac.ug");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("lecturer");
 
   // Handle form submission
-  // TODO: Replace with real API call later
   const handleSubmit = () => {
-    // Basic validation
-    if (!username || !email || !password) {
-      alert('Please fill in all fields');
+    if (!username || !email) {
+      alert("Please fill in all fields");
       return;
     }
 
-    // TODO: Send data to API
-    console.log({ username, email, password, role });
+    // TODO: Send updated data to API
+    console.log("Update staff:", { id, username, email, role });
 
     // Go back to staff list
     router.back();
@@ -44,24 +44,23 @@ export default function RegisterStaff() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <SafeAreaView style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-
           {/* Form title */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Staff Details</Text>
-            <Text style={styles.subtitle}>Fill in the form to register a new staff member</Text>
+            <Text style={styles.title}>Edit Staff</Text>
+            <Text style={styles.subtitle}>
+              Update the staff member details below
+            </Text>
           </View>
 
           {/* Form fields */}
           <View style={styles.form}>
-
-            {/* Username input */}
             <Input
               label="Username"
               placeholder="e.g. Dr. Okello"
@@ -69,7 +68,6 @@ export default function RegisterStaff() {
               onChangeText={setUsername}
             />
 
-            {/* Email input */}
             <Input
               label="Email"
               placeholder="e.g. okello@gulu.ac.ug"
@@ -78,10 +76,9 @@ export default function RegisterStaff() {
               keyboardType="email-address"
             />
 
-            {/* Password input */}
             <Input
-              label="Password"
-              placeholder="Enter password"
+              label="New Password"
+              placeholder="Leave blank to keep current"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -90,141 +87,109 @@ export default function RegisterStaff() {
             {/* Role selector */}
             <Text style={styles.roleLabel}>Role</Text>
             <View style={styles.roleRow}>
-
-              {/* Lecturer role button */}
               <TouchableOpacity
                 style={[
                   styles.roleBtn,
-                  role === 'lecturer' && styles.roleBtnActive
+                  role === "lecturer" && styles.roleBtnActive,
                 ]}
-                onPress={() => setRole('lecturer')}
+                onPress={() => setRole("lecturer")}
               >
-                <Text style={[
-                  styles.roleBtnText,
-                  role === 'lecturer' && styles.roleBtnTextActive
-                ]}>
+                <Text
+                  style={[
+                    styles.roleBtnText,
+                    role === "lecturer" && styles.roleBtnTextActive,
+                  ]}
+                >
                   Lecturer
                 </Text>
               </TouchableOpacity>
 
-              {/* Admin role button */}
               <TouchableOpacity
                 style={[
                   styles.roleBtn,
-                  role === 'admin' && styles.roleBtnActive
+                  role === "admin" && styles.roleBtnActive,
                 ]}
-                onPress={() => setRole('admin')}
+                onPress={() => setRole("admin")}
               >
-                <Text style={[
-                  styles.roleBtnText,
-                  role === 'admin' && styles.roleBtnTextActive
-                ]}>
+                <Text
+                  style={[
+                    styles.roleBtnText,
+                    role === "admin" && styles.roleBtnTextActive,
+                  ]}
+                >
                   Admin
                 </Text>
               </TouchableOpacity>
-
             </View>
 
-            {/* Submit button */}
-            <Button
-              title="Register Staff"
-              onPress={handleSubmit}
-            />
-
+            <Button title="Update Staff" onPress={handleSubmit} />
           </View>
-
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
 
-
 const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Scrollview content padding
   content: {
     padding: Spacing.lg,
   },
-
-  // Title section container
   titleContainer: {
     marginBottom: Spacing.lg,
   },
-
-  // Form title
   title: {
     fontSize: FontSize.xxl,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
-
-  // Form subtitle
   subtitle: {
     fontSize: FontSize.sm,
     color: Colors.subtext,
   },
-
-  // Form container
   form: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 3,
   },
-
-  // Role label
   roleLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
-
-  // Role buttons row
   roleRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-
-  // Individual role button
   roleBtn: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingVertical: Spacing.sm + 2,
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: Colors.background,
   },
-
-  // Active role button
   roleBtnActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-
-  // Role button text
   roleBtnText: {
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.subtext,
   },
-
-  // Active role button text
   roleBtnTextActive: {
     color: Colors.white,
   },
