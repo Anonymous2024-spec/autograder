@@ -21,6 +21,7 @@ export default function AdminLayout() {
         name="courses/register"
         options={{ title: "Register Course" }}
       />
+      <Stack.Screen name="courses/edit" options={{ title: "Edit Course" }} />
     </Stack>
   );
 }
