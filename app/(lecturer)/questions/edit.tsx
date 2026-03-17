@@ -7,7 +7,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../../components/Button';
@@ -15,22 +15,24 @@ import Input from '../../../components/Input';
 import { Colors, FontSize, Spacing, Radius } from '../../../constants';
 import { useState } from 'react';
 
-export default function CreateQuestion() {
+export default function EditQuestion() {
   const router = useRouter();
 
-  // State for question text
-  const [question, setQuestion] = useState('');
+  // Get question id passed from list screen
+  const { id } = useLocalSearchParams();
 
-  // State for course unit id
-  const [courseUnitId, setCourseUnitId] = useState('');
+  // Pre-filled form values
+  // TODO: Replace with real API call to fetch question by id
+  const [question, setQuestion] = useState('What is the full meaning of CPU?');
+  const [courseUnitId, setCourseUnitId] = useState('1');
 
-  // State for the four options
-  // is_correct tracks which option is the correct answer
+  // Pre-filled options
+  // TODO: Replace with real API call to fetch options by question id
   const [options, setOptions] = useState([
-    { id: 1, text: '', is_correct: false },
-    { id: 2, text: '', is_correct: false },
-    { id: 3, text: '', is_correct: false },
-    { id: 4, text: '', is_correct: false },
+    { id: 1, text: 'Central Processing Unit', is_correct: true },
+    { id: 2, text: 'Computer Personal Unit', is_correct: false },
+    { id: 3, text: 'Central Program Utility', is_correct: false },
+    { id: 4, text: 'Core Processing Unit', is_correct: false },
   ]);
 
   // Labels for the four options
@@ -44,7 +46,6 @@ export default function CreateQuestion() {
   };
 
   // Mark a specific option as the correct answer
-  // Only one option can be correct at a time
   const markCorrect = (index: number) => {
     const updated = options.map((opt, i) => ({
       ...opt,
@@ -54,7 +55,6 @@ export default function CreateQuestion() {
   };
 
   // Handle form submission
-  // TODO: Replace with real API call later
   const handleSubmit = () => {
     // Basic validation
     if (!question || !courseUnitId) {
@@ -74,8 +74,8 @@ export default function CreateQuestion() {
       return;
     }
 
-    // TODO: Send data to API
-    console.log({ question, courseUnitId, options });
+    // TODO: Send updated data to API
+    console.log('Update question:', { id, question, courseUnitId, options });
 
     // Go back to questions list
     router.back();
@@ -94,8 +94,8 @@ export default function CreateQuestion() {
 
           {/* Form title */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>New Question</Text>
-            <Text style={styles.subtitle}>Add a question and mark the correct answer</Text>
+            <Text style={styles.title}>Edit Question</Text>
+            <Text style={styles.subtitle}>Update the question and options below</Text>
           </View>
 
           <View style={styles.form}>
@@ -132,7 +132,6 @@ export default function CreateQuestion() {
                   style={styles.radio}
                   onPress={() => markCorrect(index)}
                 >
-                  {/* Show filled circle if this option is correct */}
                   {opt.is_correct ? (
                     <Ionicons name="radio-button-on" size={24} color={Colors.primary} />
                   ) : (
@@ -160,7 +159,7 @@ export default function CreateQuestion() {
 
             {/* Submit button */}
             <Button
-              title="Save Question"
+              title="Update Question"
               onPress={handleSubmit}
             />
 
@@ -262,7 +261,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
 
-  // Option input container takes remaining space
+  // Option input container
   optionInputContainer: {
     flex: 1,
   },
