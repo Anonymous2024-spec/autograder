@@ -9,6 +9,7 @@ export default function LecturerLayout() {
       <Stack.Screen name="questions/edit" options={{ title: 'Edit Question' }} />
       <Stack.Screen name="grading/index" options={{ title: 'Grade Student' }} />
       <Stack.Screen name="grading/result" options={{ title: 'Grade Report' }} />
+      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
     </Stack>
   );
 }

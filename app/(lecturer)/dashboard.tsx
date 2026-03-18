@@ -1,6 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Card from "../../components/Card";
 import { Colors, FontSize, Spacing } from "../../constants";
 
@@ -12,15 +20,45 @@ export default function LecturerDashboard() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header section */}
+        {/* Header section */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Welcome back 👋</Text>
             <Text style={styles.role}>Lecturer</Text>
           </View>
 
-          {/* Avatar circle with initial */}
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>L</Text>
+          {/* Header right icons */}
+          <View style={styles.headerIcons}>
+            {/* Profile icon */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => router.push({ pathname: "/(lecturer)/profile" })}
+            >
+              <Ionicons
+                name="person-circle-outline"
+                size={28}
+                color={Colors.white}
+              />
+            </TouchableOpacity>
+
+            {/* Logout icon */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => {
+                Alert.alert("Logout", "Are you sure you want to logout?", [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Logout",
+                    style: "destructive",
+                    // TODO: Clear auth token and redirect to login
+                    onPress: () =>
+                      router.replace({ pathname: "/(auth)/login" }),
+                  },
+                ]);
+              }}
+            >
+              <Ionicons name="log-out-outline" size={28} color={Colors.white} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -115,5 +153,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
+  },
+
+  // Each icon button
+  iconBtn: {
+    padding: Spacing.xs,
+  },
+  // Header icons container
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
