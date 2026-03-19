@@ -18,8 +18,10 @@ export default function AdminDashboard() {
   return (
     // SafeAreaView prevents content from hiding behind notch/status bar
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header section */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Spacing.xl }}
+      >
         {/* Header section */}
         <View style={styles.header}>
           <View>
@@ -154,19 +156,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     fontWeight: "700",
     color: Colors.text,
+    // Add horizontal padding to match card margins
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
   // Header icons container
-headerIcons: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: Spacing.sm,
-},
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
 
-// Each icon button
-iconBtn: {
-  padding: Spacing.xs,
-}
+  // Each icon button
+  iconBtn: {
+    padding: Spacing.xs,
+  },
 });

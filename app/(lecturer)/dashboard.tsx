@@ -18,8 +18,10 @@ export default function LecturerDashboard() {
   return (
     // SafeAreaView prevents content from hiding behind notch/status bar
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header section */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Spacing.xl }}
+      >
         {/* Header section */}
         <View style={styles.header}>
           <View>
@@ -146,10 +148,11 @@ const styles = StyleSheet.create({
   },
 
   // Section title above cards
-  sectionTitle: {
+ sectionTitle: {
     fontSize: FontSize.lg,
-    fontWeight: "700",
+    fontWeight: '700',
     color: Colors.text,
+    // Add horizontal padding to match card margins
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,

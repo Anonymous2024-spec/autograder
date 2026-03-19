@@ -1,11 +1,11 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors, FontSize, Radius, Spacing } from '../constants';
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, FontSize, Radius, Spacing } from "../constants";
 
 // Define what props the Card component accepts
 interface CardProps {
-  title: string;          // Main title on the card
-  description?: string;   // Optional smaller text below title
-  onPress: () => void;    // Function called when card is tapped
+  title: string; // Main title on the card
+  description?: string; // Optional smaller text below title
+  onPress: () => void; // Function called when card is tapped
   icon?: React.ReactNode; // Optional icon to show on the left
 }
 
@@ -13,7 +13,6 @@ export default function Card({ title, description, onPress, icon }: CardProps) {
   return (
     // TouchableOpacity makes the whole card tappable
     <TouchableOpacity style={styles.card} onPress={onPress}>
-
       {/* Show icon only if passed */}
       {icon && <View style={styles.iconBox}>{icon}</View>}
 
@@ -25,20 +24,20 @@ export default function Card({ title, description, onPress, icon }: CardProps) {
         {/* Show description only if passed */}
         {description && <Text style={styles.description}>{description}</Text>}
       </View>
-
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  // Card container styling
   card: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.md,
-    flexDirection: 'row',   // Icon and text side by side
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.sm,
+    // Add horizontal margin so cards don't touch screen edges
+    marginHorizontal: Spacing.lg,
     // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
@@ -53,8 +52,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: Radius.md,
     backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: Spacing.md,
   },
   // Text container takes remaining space
@@ -64,7 +63,7 @@ const styles = StyleSheet.create({
   // Title styling
   title: {
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   // Description styling
