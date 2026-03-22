@@ -1,42 +1,34 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, FontSize, Spacing, Radius } from '../../constants';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors, FontSize, Radius, Spacing } from "../../constants";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AdminProfile() {
-  const router = useRouter();
+  const { logout } = useAuth();
 
   // Mock user data for now
-  // TODO: Replace with real user data from auth context
-  const user = {
-    username: 'Admin User',
-    email: 'admin@gulu.ac.ug',
-    role: 'Administrator',
-  };
+  const { user } = useAuth();
 
-  // Handle logout
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          // TODO: Clear auth token
-          onPress: () => router.replace({ pathname: '/(auth)/login' }),
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          // No navigation needed — auth guard handles redirect
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -45,24 +37,20 @@ export default function AdminProfile() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-
         {/* Profile avatar and name */}
         <View style={styles.profileHeader}>
-
           {/* Avatar circle */}
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user.username[0]}</Text>
+            <Text style={styles.avatarText}>{user?.username?.[0] || "?"}</Text>
           </View>
 
           {/* Name and role */}
-          <Text style={styles.name}>{user.username}</Text>
-          <Text style={styles.role}>{user.role}</Text>
-
+          <Text style={styles.name}>{user?.username || "User"}</Text>
+          <Text style={styles.role}>{user?.role || "No role"}</Text>
         </View>
 
         {/* Profile details card */}
         <View style={styles.card}>
-
           {/* Email row */}
           <View style={styles.row}>
             <View style={styles.rowIcon}>
@@ -70,7 +58,7 @@ export default function AdminProfile() {
             </View>
             <View style={styles.rowInfo}>
               <Text style={styles.rowLabel}>Email</Text>
-              <Text style={styles.rowValue}>{user.email}</Text>
+              <Text style={styles.rowValue}>{user?.email || "N/A"}</Text>
             </View>
           </View>
 
@@ -80,23 +68,29 @@ export default function AdminProfile() {
           {/* Role row */}
           <View style={styles.row}>
             <View style={styles.rowIcon}>
-              <Ionicons name="shield-outline" size={20} color={Colors.primary} />
+              <Ionicons
+                name="shield-outline"
+                size={20}
+                color={Colors.primary}
+              />
             </View>
             <View style={styles.rowInfo}>
               <Text style={styles.rowLabel}>Role</Text>
-              <Text style={styles.rowValue}>{user.role}</Text>
+              <Text style={styles.rowValue}>{user?.role || "N/A"}</Text>
             </View>
           </View>
-
         </View>
 
         {/* Actions card */}
         <View style={styles.card}>
-
           {/* Change password */}
           <TouchableOpacity style={styles.row}>
             <View style={styles.rowIcon}>
-              <Ionicons name="lock-closed-outline" size={20} color={Colors.primary} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={Colors.primary}
+              />
             </View>
             <View style={styles.rowInfo}>
               <Text style={styles.rowLabel}>Change Password</Text>
@@ -104,7 +98,6 @@ export default function AdminProfile() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.subtext} />
           </TouchableOpacity>
-
         </View>
 
         {/* Logout button */}
@@ -112,7 +105,6 @@ export default function AdminProfile() {
           <Ionicons name="log-out-outline" size={20} color={Colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -132,7 +124,7 @@ const styles = StyleSheet.create({
 
   // Profile header section
   profileHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
 
@@ -142,8 +134,8 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: Spacing.md,
     // Shadow for iOS
     shadowColor: Colors.black,
@@ -157,14 +149,14 @@ const styles = StyleSheet.create({
   // Avatar initial letter
   avatarText: {
     fontSize: FontSize.xxxl,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.white,
   },
 
   // Username text
   name: {
     fontSize: FontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
@@ -192,8 +184,8 @@ const styles = StyleSheet.create({
 
   // Each row in card
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
   },
 
@@ -203,8 +195,8 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: Radius.sm,
     backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: Spacing.md,
   },
 
@@ -216,7 +208,7 @@ const styles = StyleSheet.create({
   // Row label text
   rowLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
 
@@ -236,9 +228,9 @@ const styles = StyleSheet.create({
 
   // Logout button
   logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.md,
@@ -256,7 +248,7 @@ const styles = StyleSheet.create({
   // Logout text
   logoutText: {
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.error,
   },
 });

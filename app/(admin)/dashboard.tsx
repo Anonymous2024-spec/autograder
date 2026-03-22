@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -14,6 +15,7 @@ import { Colors, FontSize, Spacing } from "../../constants";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   return (
     // SafeAreaView prevents content from hiding behind notch/status bar
@@ -53,8 +55,9 @@ export default function AdminDashboard() {
                     text: "Logout",
                     style: "destructive",
                     // TODO: Clear auth token and redirect to login
-                    onPress: () =>
-                      router.replace({ pathname: "/(auth)/login" }),
+                    onPress: async () => {
+                      await logout();
+                    },
                   },
                 ]);
               }}

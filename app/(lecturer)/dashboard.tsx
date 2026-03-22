@@ -11,9 +11,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Card from "../../components/Card";
 import { Colors, FontSize, Spacing } from "../../constants";
+import { useAuth } from "../../context/AuthContext";
 
 export default function LecturerDashboard() {
   const router = useRouter();
+  const { logout } = useAuth();
 
   return (
     // SafeAreaView prevents content from hiding behind notch/status bar
@@ -53,8 +55,9 @@ export default function LecturerDashboard() {
                     text: "Logout",
                     style: "destructive",
                     // TODO: Clear auth token and redirect to login
-                    onPress: () =>
-                      router.replace({ pathname: "/(auth)/login" }),
+                    onPress: async () => {
+                      await logout();
+                    },
                   },
                 ]);
               }}
@@ -148,9 +151,9 @@ const styles = StyleSheet.create({
   },
 
   // Section title above cards
- sectionTitle: {
+  sectionTitle: {
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     // Add horizontal padding to match card margins
     paddingHorizontal: Spacing.lg,
