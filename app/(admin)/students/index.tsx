@@ -1,73 +1,75 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, FontSize, Spacing, Radius } from '../../../constants';
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors, FontSize, Radius, Spacing } from "../../../constants";
 
 export default function StudentsScreen() {
   const router = useRouter();
-
-  // Temporary mock data for now
+  
   // TODO: Replace with real API call later
   const students = [
-    { id: 1, name: 'John Doe', reg_no: '23/U/1234', course: 'BICT' },
-    { id: 2, name: 'Jane Smith', reg_no: '23/U/5678', course: 'BCS' },
-    { id: 3, name: 'Peter Okello', reg_no: '23/U/9101', course: 'BICT' },
+    {
+      id: 1,
+      name: "John Doe",
+      reg_no: "23/U/1234",
+      no: "2300712345",
+      course: "BICT",
+    },
+    {
+      id: 2,
+      name: "Jane Smith",
+      reg_no: "23/U/5678",
+      no: "2300756789",
+      course: "BCS",
+    },
+    {
+      id: 3,
+      name: "Peter Okello",
+      reg_no: "23/U/9101",
+      no: "2300791011",
+      course: "BSE",
+    },
   ];
 
   // Handle three dot menu options
   const handleOptions = (student: { id: number; name: string }) => {
-    Alert.alert(
-      // Alert title
-      student.name,
-      // Alert message
-      'What would you like to do?',
-      [
-        // Edit option - navigates to edit screen with student id
-        {
-          text: 'Edit',
-          onPress: () => router.push({
-            pathname: '/students/edit',
-            params: { id: student.id }
+    Alert.alert(student.name, "What would you like to do?", [
+      {
+        text: "Edit",
+        onPress: () =>
+          router.push({
+            pathname: "/students/edit",
+            params: { id: student.id },
           }),
-        },
-        // Delete option - shows confirmation first
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => confirmDelete(student.id),
-        },
-        // Cancel option
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => confirmDelete(student.id),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
-  // Confirm before deleting
   const confirmDelete = (id: number) => {
     Alert.alert(
-      'Delete Student',
-      'Are you sure you want to delete this student?',
+      "Delete Student",
+      "Are you sure you want to delete this student?",
       [
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           // TODO: Replace with real API delete call later
-          onPress: () => console.log('Delete student with id:', id),
+          onPress: () => console.log("Delete student with id:", id),
         },
       ]
     );
@@ -75,26 +77,24 @@ export default function StudentsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-
-      {/* List of students */}
       <FlatList
         data={students}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
-
-        // Show this when list is empty
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color={Colors.border} />
+            <Ionicons
+              name="people-outline"
+              size={48}
+              color={Colors.border}
+            />
             <Text style={styles.emptyText}>No students found</Text>
           </View>
         }
-
-        // How each student card looks
         renderItem={({ item }) => (
           <View style={styles.card}>
 
-            {/* Avatar circle with first letter of name */}
+            {/* Avatar with first letter of name */}
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{item.name[0]}</Text>
             </View>
@@ -102,14 +102,31 @@ export default function StudentsScreen() {
             {/* Student details */}
             <View style={styles.info}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.regNo}>{item.reg_no} • {item.course}</Text>
+
+              {/* Reg no and student no on same row */}
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>{item.reg_no}</Text>
+                <View style={styles.dot} />
+                <Text style={styles.meta}>{item.no}</Text>
+              </View>
+
+              {/* Course badge */}
+              <View style={styles.courseBadge}>
+                <Text style={styles.courseBadgeText}>{item.course}</Text>
+              </View>
             </View>
 
-            {/* Three dot menu button */}
-            <TouchableOpacity onPress={() => handleOptions(item)}>
-              <Ionicons name="ellipsis-vertical" size={20} color={Colors.subtext} />
+            {/* Three dot menu */}
+            <TouchableOpacity
+              onPress={() => handleOptions(item)}
+              style={styles.menuButton}
+            >
+              <Ionicons
+                name="ellipsis-vertical"
+                size={20}
+                color={Colors.subtext}
+              />
             </TouchableOpacity>
-
           </View>
         )}
       />
@@ -117,28 +134,22 @@ export default function StudentsScreen() {
       {/* Floating add button */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: '/students/register' })}
+        onPress={() => router.push({ pathname: "/students/register" })}
       >
         <Ionicons name="add" size={28} color={Colors.white} />
       </TouchableOpacity>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // List padding
   list: {
     padding: Spacing.lg,
   },
-
-  // Each student card
   card: {
     backgroundColor: Colors.white,
     borderRadius: Radius.md,
@@ -146,16 +157,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.sm,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
-    // Shadow for Android
     elevation: 2,
   },
-
-  // Avatar circle
   avatar: {
     width: 44,
     height: 44,
@@ -165,47 +172,62 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: Spacing.md,
   },
-
-  // Initial letter inside avatar
   avatarText: {
     fontSize: FontSize.lg,
     fontWeight: "bold",
     color: Colors.white,
   },
-
-  // Student info container
   info: {
     flex: 1,
   },
-
-  // Student name
   name: {
     fontSize: FontSize.md,
     fontWeight: "600",
     color: Colors.text,
+    marginBottom: Spacing.xs,
   },
-
-  // Registration number and course
-  regNo: {
-    fontSize: FontSize.sm,
+  // Row for reg no and student no
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  meta: {
+    fontSize: FontSize.xs,
     color: Colors.subtext,
-    marginTop: Spacing.xs,
   },
-
-  // Empty state container
+  // Separator dot between reg no and student no
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.subtext,
+    marginHorizontal: Spacing.xs,
+  },
+  courseBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+  },
+  courseBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: "600",
+    color: Colors.primary,
+  },
+  menuButton: {
+    padding: Spacing.xs,
+  },
   emptyContainer: {
     alignItems: "center",
     marginTop: Spacing.xl * 2,
   },
-
-  // Empty state text
   emptyText: {
     fontSize: FontSize.md,
     color: Colors.subtext,
     marginTop: Spacing.md,
   },
-
-  // Floating action button
   fab: {
     position: "absolute",
     bottom: Spacing.xl,
@@ -216,12 +238,10 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 5,
   },
 });
