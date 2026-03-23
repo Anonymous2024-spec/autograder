@@ -1,36 +1,57 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Button from "../../../components/Button";
-import Input from "../../../components/Input";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Button from '../../../components/Button';
+import Input from '../../../components/Input';
+import { Colors, FontSize, Spacing, Radius } from '../../../constants';
+import { useState } from 'react';
 
 export default function RegisterCourse() {
   const router = useRouter();
 
   // State to store form values
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+
+  // Field-level errors
+  const [errors, setErrors] = useState({ name: '', code: '' });
+
+  // Validate each field individually
+  const validate = () => {
+    const newErrors = { name: '', code: '' };
+    let valid = true;
+
+    if (!name.trim()) {
+      newErrors.name = 'Course name is required';
+      valid = false;
+    }
+
+    if (!code.trim()) {
+      newErrors.code = 'Course code is required';
+      valid = false;
+    } else if (code.trim().length > 10) {
+      newErrors.code = 'Course code must be 10 characters or less';
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
 
   // Handle form submission
   // TODO: Replace with real API call later
   const handleSubmit = () => {
-    // Basic validation
-    if (!name || !code) {
-      alert("Please fill in all fields");
-      return;
-    }
+    if (!validate()) return;
 
     // TODO: Send data to API
-    console.log({ name, code });
+    console.log({ name: name.trim(), code: code.trim().toUpperCase() });
 
     // Go back to courses list
     router.back();
@@ -39,29 +60,36 @@ export default function RegisterCourse() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
+
           {/* Form title */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Course Details</Text>
+            <Text style={styles.title}>New Course</Text>
             <Text style={styles.subtitle}>
-              Fill in the form to register a new course
+              Fill in the details to register a new course
             </Text>
           </View>
 
           {/* Form fields */}
           <View style={styles.form}>
+
             {/* Course name input */}
             <Input
               label="Course Name"
               placeholder="e.g. Bachelor of Computer Science"
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                setName(text);
+                // Clear error as user types
+                setErrors((prev) => ({ ...prev, name: '' }));
+              }}
+              error={errors.name}
             />
 
             {/* Course code input */}
@@ -69,12 +97,22 @@ export default function RegisterCourse() {
               label="Course Code"
               placeholder="e.g. BCS"
               value={code}
-              onChangeText={setCode}
+              onChangeText={(text) => {
+                // Always store as uppercase
+                setCode(text.toUpperCase());
+                setErrors((prev) => ({ ...prev, code: '' }));
+              }}
+              error={errors.code}
             />
 
             {/* Submit button */}
-            <Button title="Register Course" onPress={handleSubmit} />
+            <Button
+              title="Register Course"
+              onPress={handleSubmit}
+            />
+
           </View>
+
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -82,47 +120,34 @@ export default function RegisterCourse() {
 }
 
 const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Scrollview content padding
   content: {
     padding: Spacing.lg,
   },
-
-  // Title section container
   titleContainer: {
     marginBottom: Spacing.lg,
   },
-
-  // Form title
   title: {
     fontSize: FontSize.xxl,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
-
-  // Form subtitle
   subtitle: {
     fontSize: FontSize.sm,
     color: Colors.subtext,
   },
-
-  // Form container
   form: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 3,
   },
 });
