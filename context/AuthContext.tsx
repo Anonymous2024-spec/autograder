@@ -57,28 +57,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Call the login endpoint, save token + user to state and SecureStore
-  const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+const login = async (email: string, password: string) => {
 
-    // Throw so the login screen can catch and show the error
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.message || "Invalid email or password");
-    }
+  // ── STATIC LOGIN FOR TESTING ──────────────────────────
+  // TODO: Remove this block once the real backend is ready
+  if (email === 'admin@gulu.ac.ug' && password === 'admin123') {
+    const mockUser = { id: 1, username: 'Admin User', email, role: 'admin' as const };
+    const mockToken = 'static-admin-token';
+    setUser(mockUser);
+    setToken(mockToken);
+    await SecureStore.setItemAsync('token', mockToken);
+    await SecureStore.setItemAsync('user', JSON.stringify(mockUser));
+    return;
+  }
 
-    const data = await response.json();
-    // API must return { token, user: { id, username, email, role } }
+  if (email === 'lecturer@gulu.ac.ug' && password === 'lecturer123') {
+    const mockUser = { id: 2, username: 'Dr. Okello', email, role: 'lecturer' as const };
+    const mockToken = 'static-lecturer-token';
+    setUser(mockUser);
+    setToken(mockToken);
+    await SecureStore.setItemAsync('token', mockToken);
+    await SecureStore.setItemAsync('user', JSON.stringify(mockUser));
+    return;
+  }
+  // ─────────────────────────────────────────────────────
 
-    setToken(data.token);
-    setUser(data.user);
+  // Wrong credentials — show error on login screen
+  // TODO: Replace this with the real fetch call once backend is ready
+  throw new Error('Invalid email or password');
 
-    await SecureStore.setItemAsync("token", data.token);
-    await SecureStore.setItemAsync("user", JSON.stringify(data.user));
-  };
+  // ── Real API call — uncomment when backend is ready ──
+  // const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ email, password }),
+  // });
+  // if (!response.ok) {
+  //   const body = await response.json();
+  //   throw new Error(body.message || 'Invalid email or password');
+  // }
+  // const data = await response.json();
+  // setToken(data.token);
+  // setUser(data.user);
+  // await SecureStore.setItemAsync('token', data.token);
+  // await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+};
 
   // Clear everything on logout
   const logout = async () => {

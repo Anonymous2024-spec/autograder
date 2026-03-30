@@ -1,5 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import {
   Dimensions,
   KeyboardAvoidingView,
@@ -8,34 +8,34 @@ import {
   StyleSheet,
   Text,
   View,
-} from "react-native";
-import Svg, { Path } from "react-native-svg";
-import Button from "../../components/Button";
-import Input from "../../components/Input";
-import { Colors, FontSize, Spacing } from "../../constants";
-import { useAuth } from "../../context/AuthContext";
+} from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import Button from '../../components/Button';
+import Input from '../../components/Input';
+import { useAuth } from '../../context/AuthContext';
+import { Colors, FontSize, Spacing } from '../../constants';
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const { login } = useAuth();
 
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
+  const [error,    setError]    = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError("Please fill in all fields");
+      setError('Please fill in all fields');
       return;
     }
     setLoading(true);
-    setError("");
+    setError('');
     try {
       await login(email, password);
     } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.");
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -44,17 +44,22 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
+
         {/* ── Blue top section ── */}
         <View style={styles.topSection}>
+
+          {/* Decorative background circles */}
           <View style={styles.circleTopRight} />
           <View style={styles.circleBottomLeft} />
+
+          {/* Icon + branding */}
           <View style={styles.iconCircle}>
             <Ionicons name="school-outline" size={44} color={Colors.primary} />
           </View>
@@ -71,7 +76,11 @@ export default function LoginScreen() {
             style={styles.wave}
           >
             <Path
-              d={`M0,0 C${width * 0.25},60 ${width * 0.75},0 ${width},40 L${width},60 L0,60 Z`}
+              d={`
+                M0,0
+                C${width * 0.25},60 ${width * 0.75},0 ${width},40
+                L${width},60 L0,60 Z
+              `}
               fill={Colors.white}
             />
           </Svg>
@@ -79,6 +88,7 @@ export default function LoginScreen() {
 
         {/* ── White form section ── */}
         <View style={styles.formSection}>
+
           <Text style={styles.formTitle}>Sign In</Text>
           <Text style={styles.formSubtitle}>
             Enter your credentials to continue
@@ -100,7 +110,7 @@ export default function LoginScreen() {
             label="Email"
             placeholder="Enter your email"
             value={email}
-            onChangeText={(t) => { setEmail(t); setError(""); }}
+            onChangeText={(t) => { setEmail(t); setError(''); }}
             keyboardType="email-address"
           />
 
@@ -108,7 +118,7 @@ export default function LoginScreen() {
             label="Password"
             placeholder="Enter your password"
             value={password}
-            onChangeText={(t) => { setPassword(t); setError(""); }}
+            onChangeText={(t) => { setPassword(t); setError(''); }}
             secureTextEntry
           />
 
@@ -126,12 +136,17 @@ export default function LoginScreen() {
             style={styles.footerWave}
           >
             <Path
-              d={`M0,40 C${width * 0.25},0 ${width * 0.75},60 ${width},20 L${width},0 L0,0 Z`}
+              d={`
+                M0,40
+                C${width * 0.25},0 ${width * 0.75},60 ${width},20
+                L${width},0 L0,0 Z
+              `}
               fill={Colors.white}
             />
           </Svg>
           <View style={styles.footerBlue} />
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -146,38 +161,43 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: Colors.primary,
   },
+
+  // ── Top blue hero ──
   topSection: {
     backgroundColor: Colors.primary,
-    alignItems: "center",
+    alignItems: 'center',
     paddingTop: Spacing.xl * 2.5,
     paddingBottom: Spacing.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
+
+  // Decorative blurred circles behind the hero content
   circleTopRight: {
-    position: "absolute",
+    position: 'absolute',
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: 'rgba(255,255,255,0.08)',
     top: -40,
     right: -40,
   },
   circleBottomLeft: {
-    position: "absolute",
+    position: 'absolute',
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: 'rgba(255,255,255,0.06)',
     bottom: 10,
     left: -30,
   },
+
   iconCircle: {
     width: 88,
     height: 88,
     borderRadius: 44,
     backgroundColor: Colors.white,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: Spacing.md,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 6 },
@@ -187,23 +207,27 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: FontSize.xxxl,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: Colors.white,
     marginBottom: Spacing.xs,
     letterSpacing: 0.5,
   },
   tagline: {
     fontSize: FontSize.sm,
-    color: "rgba(255,255,255,0.75)",
+    color: 'rgba(255,255,255,0.75)',
     letterSpacing: 1,
   },
+
+  // ── Wave between blue and white ──
   waveContainer: {
     marginTop: -1,
     backgroundColor: Colors.primary,
   },
   wave: {
-    display: "flex",
+    display: 'flex',
   },
+
+  // ── White form area ──
   formSection: {
     backgroundColor: Colors.white,
     paddingHorizontal: Spacing.lg,
@@ -212,7 +236,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: FontSize.xxl,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
@@ -222,9 +246,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF2F2",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
     borderRadius: 8,
     padding: Spacing.sm,
     marginBottom: Spacing.md,
@@ -238,14 +262,16 @@ const styles = StyleSheet.create({
   footer: {
     fontSize: FontSize.xs,
     color: Colors.placeholder,
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: Spacing.lg,
   },
+
+  // ── Bottom wave footer ──
   footerWaveContainer: {
     backgroundColor: Colors.white,
   },
   footerWave: {
-    display: "flex",
+    display: 'flex',
   },
   footerBlue: {
     backgroundColor: Colors.primary,
