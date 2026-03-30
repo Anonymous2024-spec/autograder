@@ -1,91 +1,126 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Alert,
   ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, FontSize, Spacing, Radius } from '../../../constants';
-import { useState } from 'react';
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+
+// Simulates what Gemini OCR will return after scanning
+// Each item has the question, the correct answer, and what was detected on the sheet
+const MOCK_RESULTS = [
+  {
+    id: 1,
+    question: "What is the full meaning of CPU?",
+    options: [
+      { label: "A", text: "Central Processing Unit" },
+      { label: "B", text: "Computer Personal Unit" },
+      { label: "C", text: "Central Program Utility" },
+      { label: "D", text: "Core Processing Unit" },
+    ],
+    correct_answer: "A",
+    detected_answer: "A", // OCR read this from the sheet
+  },
+  {
+    id: 2,
+    question: "Which data structure uses FIFO order?",
+    options: [
+      { label: "A", text: "Stack" },
+      { label: "B", text: "Queue" },
+      { label: "C", text: "Tree" },
+      { label: "D", text: "Graph" },
+    ],
+    correct_answer: "B",
+    detected_answer: "C", // OCR read wrong answer
+  },
+  {
+    id: 3,
+    question: "What does RAM stand for?",
+    options: [
+      { label: "A", text: "Random Access Memory" },
+      { label: "B", text: "Read Access Module" },
+      { label: "C", text: "Random Array Memory" },
+      { label: "D", text: "Read Allocate Memory" },
+    ],
+    correct_answer: "A",
+    detected_answer: "A",
+  },
+  {
+    id: 4,
+    question: "Which language is used for web styling?",
+    options: [
+      { label: "A", text: "Python" },
+      { label: "B", text: "Java" },
+      { label: "C", text: "CSS" },
+      { label: "D", text: "C++" },
+    ],
+    correct_answer: "C",
+    detected_answer: null, // OCR could not detect — blank or unreadable
+  },
+];
 
 export default function GradeResult() {
   const router = useRouter();
-
-  // Get the courseId and studentId passed from grading screen
   const { courseId, studentId } = useLocalSearchParams();
 
-  // Track if grading has been submitted
-  const [submitted, setSubmitted] = useState(false);
+  // Track if mark has been saved
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Track the final score
-  const [score, setScore] = useState(0);
+  // Calculate score from mock results
+  const correct = MOCK_RESULTS.filter(
+    (q) => q.detected_answer === q.correct_answer,
+  ).length;
+  const total = MOCK_RESULTS.length;
+  const undetected = MOCK_RESULTS.filter(
+    (q) => q.detected_answer === null,
+  ).length;
+  const percentage = Math.round((correct / total) * 100);
 
-  // Temporary mock questions for now
-  // TODO: Replace with real API call using courseId
-  const [questions, setQuestions] = useState([
-    {
-      id: 1,
-      question: 'What is the full meaning of CPU?',
-      selectedOption: null as number | null,
-      options: [
-        { id: 1, text: 'Central Processing Unit', is_correct: true },
-        { id: 2, text: 'Computer Personal Unit', is_correct: false },
-        { id: 3, text: 'Central Program Utility', is_correct: false },
-        { id: 4, text: 'Core Processing Unit', is_correct: false },
+  // Determine grade label
+  const getGrade = () => {
+    if (percentage >= 80)
+      return { label: "Distinction", color: Colors.success };
+    if (percentage >= 70) return { label: "Credit", color: Colors.primary };
+    if (percentage >= 60) return { label: "Pass", color: Colors.warning };
+    return { label: "Fail", color: Colors.error };
+  };
+
+  const grade = getGrade();
+
+  // Save mark to API
+  // TODO: Replace with real API call + Gemini results
+  const handleSave = () => {
+    Alert.alert(
+      "Save Mark",
+      `Save ${correct}/${total} (${percentage}%) for this student?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: async () => {
+            setSaving(true);
+            // TODO: POST to /api/marks with courseId, studentId, score
+            setTimeout(() => {
+              setSaving(false);
+              setSaved(true);
+            }, 1500);
+          },
+        },
       ],
-    },
-    {
-      id: 2,
-      question: 'Which data structure uses FIFO order?',
-      selectedOption: null as number | null,
-      options: [
-        { id: 5, text: 'Stack', is_correct: false },
-        { id: 6, text: 'Queue', is_correct: true },
-        { id: 7, text: 'Tree', is_correct: false },
-        { id: 8, text: 'Graph', is_correct: false },
-      ],
-    },
-  ]);
-
-  // Labels for options
-  const labels = ['A', 'B', 'C', 'D'];
-
-  // Select an option for a question
-  const selectOption = (questionId: number, optionId: number) => {
-    // Prevent changing answers after submission
-    if (submitted) return;
-
-    setQuestions((prev) =>
-      prev.map((q) =>
-        q.id === questionId ? { ...q, selectedOption: optionId } : q
-      )
     );
   };
 
-  // Calculate score and submit
-  const handleSubmit = () => {
-    // Check all questions are answered
-    const unanswered = questions.filter((q) => q.selectedOption === null);
-    if (unanswered.length > 0) {
-      alert(`You have ${unanswered.length} unanswered question(s)`);
-      return;
-    }
-
-    // Calculate score
-    const correct = questions.filter((q) => {
-      const selected = q.options.find((o) => o.id === q.selectedOption);
-      return selected?.is_correct;
-    }).length;
-
-    // Save score and mark as submitted
-    setScore(correct);
-    setSubmitted(true);
-
-    // TODO: Save marks to API
-    console.log('Save marks:', { courseId, studentId, score: correct });
+  // Go back to grading screen
+  const handleDone = () => {
+    router.replace("/(lecturer)/grading");
   };
 
   return (
@@ -94,258 +129,539 @@ export default function GradeResult() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-
-        {/* Show score card after submission */}
-        {submitted && (
-          <View style={styles.scoreCard}>
-            <Ionicons name="trophy-outline" size={36} color={Colors.primary} />
-            <Text style={styles.scoreLabel}>Final Score</Text>
-            <Text style={styles.scoreValue}>{score} / {questions.length}</Text>
-            <Text style={styles.scorePercent}>
-              {Math.round((score / questions.length) * 100)}%
+        {/* ── Score summary card ── */}
+        <View style={styles.scoreCard}>
+          {/* Grade badge */}
+          <View
+            style={[styles.gradeBadge, { backgroundColor: grade.color + "20" }]}
+          >
+            <Text style={[styles.gradeLabel, { color: grade.color }]}>
+              {grade.label}
             </Text>
           </View>
-        )}
 
-        {/* Questions list */}
-        {questions.map((q, qIndex) => (
-          <View key={q.id} style={styles.questionCard}>
-
-            {/* Question text */}
-            <Text style={styles.questionText}>
-              {qIndex + 1}. {q.question}
+          {/* Score circle */}
+          <View style={[styles.scoreCircle, { borderColor: grade.color }]}>
+            <Text style={[styles.scoreValue, { color: grade.color }]}>
+              {percentage}%
             </Text>
+            <Text style={styles.scoreFraction}>
+              {correct}/{total}
+            </Text>
+          </View>
 
-            {/* Options */}
-            {q.options.map((opt, oIndex) => {
+          {/* Stats row */}
+          <View style={styles.statsRow}>
+            {/* Correct */}
+            <View style={styles.statItem}>
+              <View
+                style={[styles.statDot, { backgroundColor: Colors.success }]}
+              />
+              <Text style={styles.statNumber}>{correct}</Text>
+              <Text style={styles.statLabel}>Correct</Text>
+            </View>
 
-              // Determine option style based on state
-              const isSelected = q.selectedOption === opt.id;
-              const isCorrect = opt.is_correct;
+            {/* Divider */}
+            <View style={styles.statDivider} />
 
-              return (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={[
-                    styles.option,
-                    // Highlight selected option
-                    isSelected && styles.optionSelected,
-                    // Show correct answer after submission
-                    submitted && isCorrect && styles.optionCorrect,
-                    // Show wrong answer after submission
-                    submitted && isSelected && !isCorrect && styles.optionWrong,
-                  ]}
-                  onPress={() => selectOption(q.id, opt.id)}
-                >
+            {/* Wrong */}
+            <View style={styles.statItem}>
+              <View
+                style={[styles.statDot, { backgroundColor: Colors.error }]}
+              />
+              <Text style={styles.statNumber}>
+                {total - correct - undetected}
+              </Text>
+              <Text style={styles.statLabel}>Wrong</Text>
+            </View>
 
-                  {/* Option label A, B, C, D */}
-                  <View style={styles.optionLabelBox}>
-                    <Text style={styles.optionLabel}>{labels[oIndex]}</Text>
+            {/* Divider */}
+            <View style={styles.statDivider} />
+
+            {/* Undetected */}
+            <View style={styles.statItem}>
+              <View
+                style={[styles.statDot, { backgroundColor: Colors.warning }]}
+              />
+              <Text style={styles.statNumber}>{undetected}</Text>
+              <Text style={styles.statLabel}>Unread</Text>
+            </View>
+          </View>
+
+          {/* Undetected warning */}
+          {undetected > 0 && (
+            <View style={styles.warningBox}>
+              <Ionicons
+                name="warning-outline"
+                size={16}
+                color={Colors.warning}
+              />
+              <Text style={styles.warningText}>
+                {undetected} answer(s) could not be read from the sheet.
+                Consider re-scanning.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Per question breakdown ── */}
+        <Text style={styles.sectionTitle}>Question Breakdown</Text>
+
+        {MOCK_RESULTS.map((q, index) => {
+          const isCorrect = q.detected_answer === q.correct_answer;
+          const isUndetected = q.detected_answer === null;
+
+          return (
+            <View key={q.id} style={styles.questionCard}>
+              {/* Question header */}
+              <View style={styles.questionHeader}>
+                {/* Question number */}
+                <View style={styles.questionNumber}>
+                  <Text style={styles.questionNumberText}>{index + 1}</Text>
+                </View>
+
+                {/* Question text */}
+                <Text style={styles.questionText} numberOfLines={2}>
+                  {q.question}
+                </Text>
+
+                {/* Result icon */}
+                {isUndetected ? (
+                  <Ionicons
+                    name="help-circle"
+                    size={22}
+                    color={Colors.warning}
+                  />
+                ) : isCorrect ? (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={Colors.success}
+                  />
+                ) : (
+                  <Ionicons
+                    name="close-circle"
+                    size={22}
+                    color={Colors.error}
+                  />
+                )}
+              </View>
+
+              {/* Options */}
+              <View style={styles.optionsContainer}>
+                {q.options.map((opt) => {
+                  const isCorrectOption = opt.label === q.correct_answer;
+                  const isDetectedOption = opt.label === q.detected_answer;
+
+                  // Determine option style
+                  let optionStyle = styles.option;
+                  let labelStyle = styles.optionLabelBox;
+                  let textStyle = styles.optionText;
+
+                  if (isCorrectOption) {
+                    optionStyle = { ...styles.option, ...styles.optionCorrect };
+                    labelStyle = {
+                      ...styles.optionLabelBox,
+                      backgroundColor: Colors.success,
+                    };
+                    textStyle = [
+                      styles.optionText,
+                      { color: Colors.success, fontWeight: "600" },
+                    ] as any;
+                  }
+
+                  if (isDetectedOption && !isCorrectOption) {
+                    optionStyle = { ...styles.option, ...styles.optionWrong };
+                    labelStyle = {
+                      ...styles.optionLabelBox,
+                      backgroundColor: Colors.error,
+                    };
+                    textStyle = [
+                      styles.optionText,
+                      { color: Colors.error },
+                    ] as any;
+                  }
+
+                  return (
+                    <View key={opt.label} style={optionStyle}>
+                      <View style={labelStyle}>
+                        <Text style={styles.optionLabelText}>{opt.label}</Text>
+                      </View>
+                      <Text style={textStyle}>{opt.text}</Text>
+
+                      {/* Tags */}
+                      <View style={styles.tagRow}>
+                        {isCorrectOption && (
+                          <View
+                            style={[
+                              styles.tag,
+                              { backgroundColor: Colors.success + "20" },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.tagText,
+                                { color: Colors.success },
+                              ]}
+                            >
+                              Correct
+                            </Text>
+                          </View>
+                        )}
+                        {isDetectedOption && !isCorrectOption && (
+                          <View
+                            style={[
+                              styles.tag,
+                              { backgroundColor: Colors.error + "20" },
+                            ]}
+                          >
+                            <Text
+                              style={[styles.tagText, { color: Colors.error }]}
+                            >
+                              Detected
+                            </Text>
+                          </View>
+                        )}
+                        {isDetectedOption && isCorrectOption && (
+                          <View
+                            style={[
+                              styles.tag,
+                              { backgroundColor: Colors.success + "20" },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.tagText,
+                                { color: Colors.success },
+                              ]}
+                            >
+                              ✓ Detected
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* Undetected notice */}
+                {isUndetected && (
+                  <View style={styles.undetectedBox}>
+                    <Ionicons
+                      name="scan-outline"
+                      size={14}
+                      color={Colors.warning}
+                    />
+                    <Text style={styles.undetectedText}>
+                      Could not read answer from sheet
+                    </Text>
                   </View>
+                )}
+              </View>
+            </View>
+          );
+        })}
 
-                  {/* Option text */}
-                  <Text style={[
-                    styles.optionText,
-                    isSelected && styles.optionTextSelected,
-                    submitted && isCorrect && styles.optionTextCorrect,
-                    submitted && isSelected && !isCorrect && styles.optionTextWrong,
-                  ]}>
-                    {opt.text}
-                  </Text>
-
-                </TouchableOpacity>
-              );
-            })}
-
-          </View>
-        ))}
-
-        {/* Submit or Done button */}
-        {!submitted ? (
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Submit & Calculate Score</Text>
+        {/* ── Action buttons ── */}
+        {!saved ? (
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <>
+                <Ionicons name="save-outline" size={20} color={Colors.white} />
+                <Text style={styles.saveBtnText}>Save Mark</Text>
+              </>
+            )}
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: Colors.success }]}
-            onPress={() => router.replace({ pathname: '/grading' })}
-          >
-            <Text style={styles.buttonText}>Done</Text>
-          </TouchableOpacity>
-        )}
+          <>
+            {/* Success message */}
+            <View style={styles.savedBox}>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={Colors.success}
+              />
+              <Text style={styles.savedText}>Mark saved successfully</Text>
+            </View>
 
+            {/* Done button */}
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: Colors.success }]}
+              onPress={handleDone}
+            >
+              <Ionicons
+                name="arrow-back-outline"
+                size={20}
+                color={Colors.white}
+              />
+              <Text style={styles.saveBtnText}>Back to Grading</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Scrollview content padding
   content: {
     padding: Spacing.lg,
+    paddingBottom: Spacing.xl * 2,
   },
 
-  // Score card shown after submission
+  // ── Score card ──
   scoreCard: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
-    padding: Spacing.xl,
-    alignItems: 'center',
+    padding: Spacing.lg,
+    alignItems: "center",
     marginBottom: Spacing.lg,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 3,
   },
-
-  // Score label text
-  scoreLabel: {
-    fontSize: FontSize.md,
+  gradeBadge: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+    marginBottom: Spacing.md,
+  },
+  gradeLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  scoreCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  scoreValue: {
+    fontSize: FontSize.xxl,
+    fontWeight: "bold",
+  },
+  scoreFraction: {
+    fontSize: FontSize.sm,
     color: Colors.subtext,
+    marginTop: Spacing.xs,
+  },
+
+  // Stats row
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: Spacing.md,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: Spacing.xs,
+  },
+  statNumber: {
+    fontSize: FontSize.xl,
+    fontWeight: "bold",
+    color: Colors.text,
+  },
+  statLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: Colors.border,
+  },
+
+  // Warning box
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.warning + "15",
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
+    width: "100%",
     marginTop: Spacing.sm,
   },
-
-  // Score value e.g 8/10
-  scoreValue: {
-    fontSize: FontSize.xxxl,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    marginTop: Spacing.xs,
+  warningText: {
+    fontSize: FontSize.xs,
+    color: Colors.warning,
+    flex: 1,
+    lineHeight: 18,
   },
 
-  // Score percentage
-  scorePercent: {
-    fontSize: FontSize.xl,
-    color: Colors.subtext,
-    marginTop: Spacing.xs,
+  // ── Question breakdown ──
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: Spacing.md,
   },
-
-  // Each question card
   questionCard: {
     backgroundColor: Colors.white,
     borderRadius: Radius.md,
     padding: Spacing.md,
     marginBottom: Spacing.md,
-    // Shadow for iOS
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
-    // Shadow for Android
     elevation: 2,
   },
-
-  // Question text
-  questionText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    color: Colors.text,
+  questionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.md,
-    lineHeight: 22,
+    gap: Spacing.sm,
   },
-
-  // Each option row
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.sm,
-    backgroundColor: Colors.background,
-  },
-
-  // Selected option
-  optionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-
-  // Correct option after submission
-  optionCorrect: {
-    borderColor: Colors.success,
-    backgroundColor: '#ECFDF5',
-  },
-
-  // Wrong option after submission
-  optionWrong: {
-    borderColor: Colors.error,
-    backgroundColor: '#FEF2F2',
-  },
-
-  // Option label box A, B, C, D
-  optionLabelBox: {
+  questionNumber: {
     width: 28,
     height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  questionNumberText: {
+    fontSize: FontSize.sm,
+    fontWeight: "bold",
+    color: Colors.primary,
+  },
+  questionText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.text,
+    lineHeight: 20,
+  },
+
+  // Options
+  optionsContainer: {
+    gap: Spacing.xs,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    backgroundColor: Colors.background,
+    gap: Spacing.sm,
+  },
+  optionCorrect: {
+    borderColor: Colors.success,
+    backgroundColor: "#ECFDF5",
+  },
+  optionWrong: {
+    borderColor: Colors.error,
+    backgroundColor: "#FEF2F2",
+  },
+  optionLabelBox: {
+    width: 26,
+    height: 26,
     borderRadius: Radius.sm,
     backgroundColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.sm,
+    justifyContent: "center",
+    alignItems: "center",
   },
-
-  // Option label text
-  optionLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: 'bold',
-    color: Colors.subtext,
+  optionLabelText: {
+    fontSize: FontSize.xs,
+    fontWeight: "bold",
+    color: Colors.white,
   },
-
-  // Option text
   optionText: {
+    flex: 1,
     fontSize: FontSize.sm,
     color: Colors.text,
-    flex: 1,
+  },
+  tagRow: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+  },
+  tag: {
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
 
-  // Selected option text
-  optionTextSelected: {
-    color: Colors.primary,
-    fontWeight: '600',
+  // Undetected
+  undetectedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.warning + "15",
+    borderRadius: Radius.sm,
+    padding: Spacing.sm,
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  undetectedText: {
+    fontSize: FontSize.xs,
+    color: Colors.warning,
   },
 
-  // Correct option text
-  optionTextCorrect: {
-    color: Colors.success,
-    fontWeight: '600',
-  },
-
-  // Wrong option text
-  optionTextWrong: {
-    color: Colors.error,
-  },
-
-  // Submit/Done button
-  button: {
+  // ── Save button ──
+  saveBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xl,
-    // Shadow for iOS
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    // Shadow for Android
     elevation: 5,
   },
-
-  // Button text
-  buttonText: {
+  saveBtnText: {
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.white,
+  },
+  savedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ECFDF5",
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  savedText: {
+    fontSize: FontSize.md,
+    fontWeight: "600",
+    color: Colors.success,
   },
 });
