@@ -56,7 +56,7 @@ export default function GradingScreen() {
 
     // Navigate to scan screen with course and student context
     router.push({
-      pathname: "/(lecturer)/grading",
+      pathname: "/(lecturer)/grading/scan",
       params: {
         courseId: selectedCourse.id,
         studentId: selectedStudent,
