@@ -1,43 +1,44 @@
-import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { useEffect } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { AuthProvider, useAuth } from "../context/AuthContext";
+import { Colors } from "../constants";
 
-// Separated so it can call useAuth (which needs AuthProvider above it)
 function RootLayoutNav() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    // Wait until SecureStore restore is done
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!user && !inAuthGroup) {
-      // Not logged in and not on login screen → send to login
-      router.replace('/(auth)/login');
-
+      router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
-      // Already logged in but sitting on login screen → send to dashboard
-      if (user.role === 'admin') {
-        router.replace('/(admin)/dashboard');
+      if (user.role === "admin") {
+        router.replace("/(admin)/dashboard");
       } else {
-        router.replace('/(lecturer)/dashboard');
+        router.replace("/(lecturer)/dashboard");
       }
     }
-  }, [user, loading, segments]);
+  }, [user, loading]);
 
-  // Show nothing while restoring session (prevents flash of wrong screen)
   if (loading) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)"     options={{ headerShown: false }} />
-      <Stack.Screen name="(admin)"    options={{ headerShown: false }} />
-      <Stack.Screen name="(lecturer)" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      {/* Light content = white icons/text in status bar
+          Works on both the blue header screens and dark screens */}
+      <StatusBar style="light" backgroundColor={Colors.primary} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="(lecturer)" options={{ headerShown: false }} />
+      </Stack>
+    </>
   );
 }
 

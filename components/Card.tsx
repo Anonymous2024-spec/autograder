@@ -1,75 +1,133 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Colors, FontSize, Radius, Spacing } from "../constants";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../constants";
 
-// Define what props the Card component accepts
 interface CardProps {
-  title: string; // Main title on the card
-  description?: string; // Optional smaller text below title
-  onPress: () => void; // Function called when card is tapped
-  icon?: React.ReactNode; // Optional icon to show on the left
+  title: string;
+  description?: string;
+  onPress: () => void;
+  icon?: React.ReactNode;
+  accent?: string; // background color for icon box
+  badge?: string;  // small badge text e.g. "12 students"
+  arrow?: boolean;
 }
 
-export default function Card({ title, description, onPress, icon }: CardProps) {
+export default function Card({
+  title,
+  description,
+  onPress,
+  icon,
+  accent = Colors.primaryLight,
+  badge,
+  arrow = true,
+}: CardProps) {
   return (
-    // TouchableOpacity makes the whole card tappable
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      {/* Show icon only if passed */}
-      {icon && <View style={styles.iconBox}>{icon}</View>}
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      {/* Icon box */}
+      {icon && (
+        <View style={[styles.iconBox, { backgroundColor: accent }]}>
+          {icon}
+        </View>
+      )}
 
-      {/* Text section */}
+      {/* Text */}
       <View style={styles.textBox}>
-        {/* Card title */}
         <Text style={styles.title}>{title}</Text>
-
-        {/* Show description only if passed */}
-        {description && <Text style={styles.description}>{description}</Text>}
+        {description && (
+          <Text style={styles.description}>{description}</Text>
+        )}
+        {badge && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        )}
       </View>
+
+      {/* Arrow */}
+      {arrow && (
+        <View style={styles.arrowBox}>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={Colors.primary}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
     padding: Spacing.md,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.sm,
-    // Add horizontal margin so cards don't touch screen edges
+    marginBottom: Spacing.md,
     marginHorizontal: Spacing.lg,
-    // Shadow for iOS
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    // Shadow for Android
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.md,
   },
-  // Icon box styling
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primaryLight,
+    width: 52,
+    height: 52,
+    borderRadius: Radius.lg,
     justifyContent: "center",
     alignItems: "center",
     marginRight: Spacing.md,
   },
-  // Text container takes remaining space
   textBox: {
     flex: 1,
   },
-  // Title styling
   title: {
     fontSize: FontSize.md,
-    fontWeight: "600",
+    fontWeight: FontWeight.semibold,
     color: Colors.text,
+    marginBottom: 2,
   },
-  // Description styling
   description: {
     fontSize: FontSize.sm,
     color: Colors.subtext,
+    lineHeight: 18,
+  },
+  badge: {
+    alignSelf: "flex-start",
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
     marginTop: Spacing.xs,
+  },
+  badgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.primary,
+  },
+  arrowBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: Spacing.sm,
   },
 });

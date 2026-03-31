@@ -1,15 +1,30 @@
-import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { Colors, FontSize, Radius, Spacing } from '../constants';
+import { useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Spacing,
+} from "../constants";
 
-// Define what props the Input component accepts
 interface InputProps {
-  label: string;           // Label shown above the input
-  placeholder?: string;    // Placeholder text inside the input
-  value: string;           // Current value of the input
-  onChangeText: (text: string) => void;  // Function called when user types
-  secureTextEntry?: boolean;  // Hides text for passwords
-  keyboardType?: 'default' | 'email-address' | 'numeric';  // Keyboard type
-  error?: string;          // Error message shown below input
+  label: string;
+  placeholder?: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: "default" | "email-address" | "numeric";
+  error?: string;
+  icon?: string;
+  multiline?: boolean;
 }
 
 export default function Input({
@@ -18,65 +33,136 @@ export default function Input({
   value,
   onChangeText,
   secureTextEntry = false,
-  keyboardType = 'default',
+  keyboardType = "default",
   error,
+  icon,
+  multiline = false,
 }: InputProps) {
+  const [focused, setFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isPassword = secureTextEntry;
+
   return (
     <View style={styles.container}>
+      {/* Label */}
+      {label ? (
+        <Text style={styles.label}>{label}</Text>
+      ) : null}
 
-      {/* Label above the input */}
-      <Text style={styles.label}>{label}</Text>
+      {/* Input row */}
+      <View
+        style={[
+          styles.inputWrapper,
+          focused && styles.inputWrapperFocused,
+          error ? styles.inputWrapperError : null,
+        ]}
+      >
+        {/* Left icon */}
+        {icon && (
+          <Ionicons
+            name={icon as any}
+            size={18}
+            color={focused ? Colors.primary : Colors.placeholder}
+            style={styles.leftIcon}
+          />
+        )}
 
-      {/* The actual text input */}
-      <TextInput
-        style={[styles.input, error && styles.inputError]}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.placeholder}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize="none"
-      />
+        <TextInput
+          style={[styles.input, multiline && styles.multiline]}
+          placeholder={placeholder}
+          placeholderTextColor={Colors.placeholder}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={isPassword && !showPassword}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          multiline={multiline}
+          numberOfLines={multiline ? 4 : 1}
+        />
 
-      {/* Show error message only if error prop is passed */}
-      {error && <Text style={styles.error}>{error}</Text>}
+        {/* Password toggle */}
+        {isPassword && (
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.rightIcon}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={18}
+              color={Colors.placeholder}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
 
+      {/* Error */}
+      {error ? (
+        <View style={styles.errorRow}>
+          <Ionicons name="alert-circle" size={12} color={Colors.error} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Spacing between each input group
   container: {
     marginBottom: Spacing.md,
   },
-  // Label styling
   label: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.text,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textSecondary,
     marginBottom: Spacing.xs,
   },
-  // Input box styling
-  input: {
-    borderWidth: 1,
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 4,
+    minHeight: 52,
+  },
+  inputWrapperFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.surface,
+  },
+  inputWrapperError: {
+    borderColor: Colors.error,
+    backgroundColor: Colors.errorLight,
+  },
+  leftIcon: {
+    marginRight: Spacing.sm,
+  },
+  input: {
+    flex: 1,
     fontSize: FontSize.md,
     color: Colors.text,
-    backgroundColor: Colors.white,
+    paddingVertical: Spacing.sm,
   },
-  // Red border when there is an error
-  inputError: {
-    borderColor: Colors.error,
+  multiline: {
+    height: 100,
+    textAlignVertical: "top",
+    paddingTop: Spacing.sm,
   },
-  // Error message styling
+  rightIcon: {
+    padding: Spacing.xs,
+    marginLeft: Spacing.xs,
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: Spacing.xs,
+  },
   error: {
     fontSize: FontSize.xs,
     color: Colors.error,
-    marginTop: Spacing.xs,
   },
 });

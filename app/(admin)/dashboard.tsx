@@ -1,4 +1,3 @@
-import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -12,28 +11,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Card from "../../components/Card";
 import { Colors, FontSize, Spacing } from "../../constants";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { logout } = useAuth();
 
   return (
-    // SafeAreaView prevents content from hiding behind notch/status bar
     <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Spacing.xl }}
       >
-        {/* Header section */}
+        {/* ── Header ── */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Welcome back 👋</Text>
             <Text style={styles.role}>Administrator</Text>
           </View>
 
-          {/* Header right icons */}
           <View style={styles.headerIcons}>
-            {/* Profile icon */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => router.push({ pathname: "/(admin)/profile" })}
@@ -45,7 +42,6 @@ export default function AdminDashboard() {
               />
             </TouchableOpacity>
 
-            {/* Logout icon */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => {
@@ -54,29 +50,35 @@ export default function AdminDashboard() {
                   {
                     text: "Logout",
                     style: "destructive",
-                    // TODO: Clear auth token and redirect to login
-                    onPress: async () => {
-                      await logout();
-                    },
+                    onPress: async () => { await logout(); },
                   },
                 ]);
               }}
             >
-              <Ionicons name="log-out-outline" size={28} color={Colors.white} />
+              <Ionicons
+                name="log-out-outline"
+                size={28}
+                color={Colors.white}
+              />
             </TouchableOpacity>
           </View>
         </View>
-        {/* Section title */}
+
+        {/* ── Section title ── */}
         <Text style={styles.sectionTitle}>Manage</Text>
 
-        {/* Dashboard cards */}
+        {/* ── Dashboard cards ── */}
         <Card
           title="Students"
           description="Register and manage students"
           icon={
-            <Ionicons name="people-outline" size={24} color={Colors.primary} />
+            <Ionicons
+              name="people-outline"
+              size={24}
+              color={Colors.primary}
+            />
           }
-          onPress={() => router.push({ pathname: "/students" })}
+          onPress={() => router.push({ pathname: "/(admin)/students" })}
         />
 
         <Card
@@ -89,30 +91,48 @@ export default function AdminDashboard() {
               color={Colors.primary}
             />
           }
-          onPress={() => router.push({ pathname: "/staff" })}
+          onPress={() => router.push({ pathname: "/(admin)/staff" })}
         />
 
         <Card
           title="Courses"
           description="Register and manage courses"
           icon={
-            <Ionicons name="book-outline" size={24} color={Colors.primary} />
+            <Ionicons
+              name="book-outline"
+              size={24}
+              color={Colors.primary}
+            />
           }
-          onPress={() => router.push({ pathname: "/courses" })}
+          onPress={() => router.push({ pathname: "/(admin)/courses" })}
         />
+
+        {/* ── Questions section ── */}
+        <Text style={styles.sectionTitle}>Academic</Text>
+
+        <Card
+          title="Questions"
+          description="View and manage MCQ questions per course"
+          icon={
+            <Ionicons
+              name="help-circle-outline"
+              size={24}
+              color={Colors.primary}
+            />
+          }
+          onPress={() => router.push({ pathname: "/questions" })}
+        />
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Main container background
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
-  // Header row - name and avatar side by side
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -122,57 +142,30 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
     backgroundColor: Colors.primary,
   },
-
-  // Welcome text
   greeting: {
     fontSize: FontSize.lg,
     color: Colors.white,
     fontWeight: "600",
   },
-
-  // Role text below greeting
   role: {
     fontSize: FontSize.sm,
     color: Colors.primaryLight,
     marginTop: Spacing.xs,
   },
-
-  // Avatar circle
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.white,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  // Initial letter inside avatar
-  avatarText: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
-    color: Colors.primary,
-  },
-
-  // Section title above cards
-  sectionTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: "700",
-    color: Colors.text,
-    // Add horizontal padding to match card margins
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  // Header icons container
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
   },
-
-  // Each icon button
   iconBtn: {
     padding: Spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.text,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
 });
