@@ -1,8 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "../../context/AuthContext";
 import {
   Colors,
   FontSize,
@@ -11,6 +17,8 @@ import {
   Shadows,
   Spacing,
 } from "../../constants";
+// Change the import path
+import { useAuth } from "../../context/AuthContext";
 
 export default function AdminProfile() {
   const { user, logout } = useAuth();
@@ -30,7 +38,9 @@ export default function AdminProfile() {
       {
         text: "Logout",
         style: "destructive",
-        onPress: async () => { await logout(); },
+        onPress: async () => {
+          await logout();
+        },
       },
     ]);
   };
@@ -44,7 +54,6 @@ export default function AdminProfile() {
           { paddingBottom: insets.bottom + Spacing.xl },
         ]}
       >
-
         {/* ── Gradient profile header ── */}
         <LinearGradient
           colors={["#0D1F6B", "#1A3BAA", Colors.primary]}
@@ -83,28 +92,26 @@ export default function AdminProfile() {
               size={13}
               color="rgba(255,255,255,0.8)"
             />
-            <Text style={styles.emailPillText}>
-              {user?.email ?? "—"}
-            </Text>
+            <Text style={styles.emailPillText}>{user?.email ?? "—"}</Text>
           </View>
-
         </LinearGradient>
 
         {/* ── Stats row ── */}
+
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>124</Text>
-            <Text style={styles.statLabel}>Students</Text>
+            <Text style={styles.statNumber}>340</Text>
+            <Text style={styles.statLabel}>Questions</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>48</Text>
+            <Text style={styles.statLabel}>Graded</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>8</Text>
             <Text style={styles.statLabel}>Courses</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Staff</Text>
           </View>
         </View>
 
@@ -112,11 +119,19 @@ export default function AdminProfile() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Details</Text>
           <View style={styles.card}>
-
             {/* Email */}
             <View style={styles.row}>
-              <View style={[styles.rowIcon, { backgroundColor: Colors.primaryLight }]}>
-                <Ionicons name="mail-outline" size={18} color={Colors.primary} />
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: Colors.primaryLight },
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={Colors.primary}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>Email Address</Text>
@@ -129,7 +144,11 @@ export default function AdminProfile() {
             {/* Role */}
             <View style={styles.row}>
               <View style={[styles.rowIcon, { backgroundColor: "#EDE9FE" }]}>
-                <Ionicons name="shield-outline" size={18} color={Colors.cardPurple} />
+                <Ionicons
+                  name="shield-outline"
+                  size={18}
+                  color={Colors.cardPurple}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>Role</Text>
@@ -148,15 +167,23 @@ export default function AdminProfile() {
 
             {/* User ID */}
             <View style={styles.row}>
-              <View style={[styles.rowIcon, { backgroundColor: Colors.accentLight }]}>
-                <Ionicons name="finger-print-outline" size={18} color={Colors.accent} />
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: Colors.accentLight },
+                ]}
+              >
+                <Ionicons
+                  name="finger-print-outline"
+                  size={18}
+                  color={Colors.accent}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>User ID</Text>
                 <Text style={styles.rowValue}>#{user?.id ?? "—"}</Text>
               </View>
             </View>
-
           </View>
         </View>
 
@@ -164,47 +191,84 @@ export default function AdminProfile() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <View style={styles.card}>
-
             {/* Change password */}
             <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-              <View style={[styles.rowIcon, { backgroundColor: Colors.warningLight }]}>
-                <Ionicons name="lock-closed-outline" size={18} color={Colors.warning} />
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: Colors.warningLight },
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={Colors.warning}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>Change Password</Text>
                 <Text style={styles.rowValue}>Update your login password</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.subtext} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={Colors.subtext}
+              />
             </TouchableOpacity>
 
             <View style={styles.rowDivider} />
 
             {/* Notifications */}
             <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-              <View style={[styles.rowIcon, { backgroundColor: Colors.successLight }]}>
-                <Ionicons name="notifications-outline" size={18} color={Colors.success} />
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: Colors.successLight },
+                ]}
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={18}
+                  color={Colors.success}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>Notifications</Text>
                 <Text style={styles.rowValue}>Manage alerts and reminders</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.subtext} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={Colors.subtext}
+              />
             </TouchableOpacity>
 
             <View style={styles.rowDivider} />
 
             {/* About */}
             <TouchableOpacity style={styles.row} activeOpacity={0.7}>
-              <View style={[styles.rowIcon, { backgroundColor: Colors.primaryLight }]}>
-                <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+              <View
+                style={[
+                  styles.rowIcon,
+                  { backgroundColor: Colors.primaryLight },
+                ]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color={Colors.primary}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={styles.rowLabel}>About AutoGrader</Text>
                 <Text style={styles.rowValue}>Version 1.0.0</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.subtext} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={Colors.subtext}
+              />
             </TouchableOpacity>
-
           </View>
         </View>
 
@@ -217,8 +281,14 @@ export default function AdminProfile() {
               activeOpacity={0.7}
               onPress={handleLogout}
             >
-              <View style={[styles.rowIcon, { backgroundColor: Colors.errorLight }]}>
-                <Ionicons name="log-out-outline" size={18} color={Colors.error} />
+              <View
+                style={[styles.rowIcon, { backgroundColor: Colors.errorLight }]}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={Colors.error}
+                />
               </View>
               <View style={styles.rowInfo}>
                 <Text style={[styles.rowLabel, { color: Colors.error }]}>
@@ -234,10 +304,7 @@ export default function AdminProfile() {
         </View>
 
         {/* Footer */}
-        <Text style={styles.footer}>
-          AutoGrader · Gulu University © 2025
-        </Text>
-
+        <Text style={styles.footer}>AutoGrader · Gulu University © 2025</Text>
       </ScrollView>
     </View>
   );
