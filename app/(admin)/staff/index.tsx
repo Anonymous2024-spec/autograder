@@ -1,270 +1,420 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
+
+const STAFF = [
+  {
+    id: 1,
+    username: "Dr. Okello",
+    email: "okello@gulu.ac.ug",
+    role: "lecturer",
+    color: Colors.cardBlue,
+  },
+  {
+    id: 2,
+    username: "Dr. Achen",
+    email: "achen@gulu.ac.ug",
+    role: "lecturer",
+    color: Colors.cardTeal,
+  },
+  {
+    id: 3,
+    username: "Admin User",
+    email: "admin@gulu.ac.ug",
+    role: "admin",
+    color: Colors.cardPurple,
+  },
+];
+
+const FILTERS = ["All", "lecturer", "admin"];
 
 export default function StaffScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
 
-  // Temporary mock data for now
-  // TODO: Replace with real API call later
-  const staff = [
-    {
-      id: 1,
-      username: "Dr. Okello",
-      email: "okello@gulu.ac.ug",
-      role: "lecturer",
-    },
-    {
-      id: 2,
-      username: "Dr. Achen",
-      email: "achen@gulu.ac.ug",
-      role: "lecturer",
-    },
-    { id: 3, username: "Admin User", email: "admin@gulu.ac.ug", role: "admin" },
-  ];
+  const filtered = STAFF.filter((s) => {
+    const matchSearch =
+      s.username.toLowerCase().includes(search.toLowerCase()) ||
+      s.email.toLowerCase().includes(search.toLowerCase());
+    const matchFilter =
+      activeFilter === "All" || s.role === activeFilter;
+    return matchSearch && matchFilter;
+  });
 
-  // Handle three dot menu options
   const handleOptions = (member: { id: number; username: string }) => {
     Alert.alert(member.username, "What would you like to do?", [
-      // Edit option
       {
         text: "Edit",
         onPress: () =>
           router.push({
-            pathname: "/staff/edit",
+            pathname: "/(admin)/staff/edit",
             params: { id: member.id },
           }),
       },
-      // Delete option
       {
         text: "Delete",
         style: "destructive",
         onPress: () => confirmDelete(member.id),
       },
-      // Cancel option
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const confirmDelete = (id: number) => {
+    Alert.alert("Delete Staff", "Are you sure?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Cancel",
-        style: "cancel",
+        text: "Delete",
+        style: "destructive",
+        onPress: () => console.log("Delete staff:", id),
       },
     ]);
   };
 
-  // Confirm before deleting
-  const confirmDelete = (id: number) => {
-    Alert.alert(
-      "Delete Staff",
-      "Are you sure you want to delete this staff member?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          // TODO: Replace with real API delete call later
-          onPress: () => console.log("Delete staff with id:", id),
-        },
-      ],
-    );
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* List of staff */}
-      <FlatList
-        data={staff}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        // Show this when list is empty
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="person-outline" size={48} color={Colors.border} />
-            <Text style={styles.emptyText}>No staff found</Text>
+    <View style={styles.root}>
+
+      {/* ── Header ── */}
+      <LinearGradient
+        colors={["#2D1B69", "#5B21B6", Colors.cardPurple]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.md }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Staff & Users</Text>
+            <Text style={styles.headerSub}>
+              {STAFF.length} registered members
+            </Text>
           </View>
-        }
-        // How each staff card looks
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {/* Avatar circle with first letter of username */}
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.username[0]}</Text>
-            </View>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() =>
+              router.push({ pathname: "/(admin)/staff/register" })
+            }
+          >
+            <Ionicons name="add" size={22} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
 
-            {/* Staff details */}
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.username}</Text>
-              <Text style={styles.email}>{item.email}</Text>
-            </View>
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={18} color={Colors.subtext} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search name or email..."
+            placeholderTextColor={Colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={18} color={Colors.placeholder} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
 
-            {/* Role badge */}
-            <View
+      {/* ── Filters ── */}
+      <View style={styles.filtersRow}>
+        {FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[
+              styles.filterChip,
+              activeFilter === f && styles.filterChipActive,
+            ]}
+            onPress={() => setActiveFilter(f)}
+          >
+            <Text
               style={[
-                styles.badge,
-                {
-                  backgroundColor:
-                    item.role === "admin" ? "#EDE9FE" : Colors.primaryLight,
-                },
+                styles.filterChipText,
+                activeFilter === f && styles.filterChipTextActive,
               ]}
             >
-              <Text
-                style={[
-                  styles.badgeText,
-                  { color: item.role === "admin" ? "#8B5CF6" : Colors.primary },
-                ]}
-              >
-                {item.role}
-              </Text>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.resultsRow}>
+        <Text style={styles.resultsText}>
+          Showing <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
+          {filtered.length === 1 ? "member" : "members"}
+        </Text>
+      </View>
+
+      {/* ── List ── */}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={[styles.emptyIconBox, { backgroundColor: "#EDE9FE" }]}>
+              <Ionicons name="person-outline" size={40} color={Colors.cardPurple} />
+            </View>
+            <Text style={styles.emptyTitle}>No Staff Found</Text>
+            <Text style={styles.emptyText}>
+              {search ? "Try a different search" : "Tap + to add staff"}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <LinearGradient
+              colors={[item.color, item.color + "CC"]}
+              style={styles.cardAvatar}
+            >
+              <Text style={styles.cardAvatarText}>{item.username[0]}</Text>
+            </LinearGradient>
+
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardName}>{item.username}</Text>
+              <View style={styles.cardMetaRow}>
+                <Ionicons name="mail-outline" size={12} color={Colors.subtext} />
+                <Text style={styles.cardMeta}>{item.email}</Text>
+              </View>
             </View>
 
-            {/* Three dot menu button */}
-            <TouchableOpacity
-              onPress={() => handleOptions(item)}
-              style={styles.menuButton}
-            >
-              <Ionicons
-                name="ellipsis-vertical"
-                size={20}
-                color={Colors.subtext}
-              />
-            </TouchableOpacity>
+            <View style={styles.cardRight}>
+              <View
+                style={[
+                  styles.roleBadge,
+                  {
+                    backgroundColor:
+                      item.role === "admin" ? "#EDE9FE" : Colors.primaryLight,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.roleBadgeText,
+                    {
+                      color:
+                        item.role === "admin"
+                          ? Colors.cardPurple
+                          : Colors.primary,
+                    },
+                  ]}
+                >
+                  {item.role}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.menuBtn}
+                onPress={() => handleOptions(item)}
+              >
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={18}
+                  color={Colors.subtext}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       />
-
-      {/* Floating add button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push({ pathname: "/staff/register" })}
-      >
-        <Ionicons name="add" size={28} color={Colors.white} />
-      </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Main container
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  root: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    overflow: "hidden",
   },
-
-  // List padding
-  list: {
-    padding: Spacing.lg,
+  headerShapeL: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: -60,
+    right: -40,
   },
-
-  // Each staff card
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
+  headerShapeS: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    bottom: 10,
+    left: -20,
+  },
+  headerTop: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-    // Shadow for iOS
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    // Shadow for Android
-    elevation: 2,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.md,
   },
-
-  // Avatar circle
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: Spacing.md,
-  },
-
-  // Initial letter inside avatar
-  avatarText: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
+  headerTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
     color: Colors.white,
   },
-
-  // Staff info container
-  info: {
-    flex: 1,
-  },
-
-  // Staff name
-  name: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-
-  // Staff email
-  email: {
+  headerSub: {
     fontSize: FontSize.sm,
-    color: Colors.subtext,
-    marginTop: Spacing.xs,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
   },
-
-  // Role badge container
-  badge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    marginRight: Spacing.sm,
-  },
-
-  // Role badge text
-  badgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: "600",
-    textTransform: "capitalize",
-  },
-
-  // Three dot menu button
-  menuButton: {
-    padding: Spacing.xs,
-  },
-
-  // Empty state container
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: Spacing.xl * 2,
-  },
-
-  // Empty state text
-  emptyText: {
-    fontSize: FontSize.md,
-    color: Colors.subtext,
-    marginTop: Spacing.md,
-  },
-
-  // Floating action button
-  fab: {
-    position: "absolute",
-    bottom: Spacing.xl,
-    right: Spacing.lg,
-    backgroundColor: Colors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
     justifyContent: "center",
     alignItems: "center",
-    // Shadow for iOS
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    // Shadow for Android
-    elevation: 5,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    gap: Spacing.sm,
+    ...Shadows.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: 0,
+  },
+  filtersRow: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.cardPurple,
+    borderColor: Colors.cardPurple,
+  },
+  filterChipText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+  },
+  filterChipTextActive: { color: Colors.white },
+  resultsRow: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  resultsText: { fontSize: FontSize.sm, color: Colors.subtext },
+  resultsCount: { fontWeight: FontWeight.bold, color: Colors.cardPurple },
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl * 2,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: Spacing.md,
+    ...Shadows.sm,
+  },
+  cardAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardAvatarText: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  cardInfo: { flex: 1, gap: 3 },
+  cardName: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  cardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  cardMeta: { fontSize: FontSize.xs, color: Colors.subtext },
+  cardRight: { alignItems: "flex-end", gap: Spacing.xs },
+  roleBadge: {
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+  },
+  roleBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    textTransform: "capitalize",
+  },
+  menuBtn: { padding: Spacing.xs },
+  emptyContainer: {
+    alignItems: "center",
+    paddingTop: Spacing.xl * 2,
+  },
+  emptyIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  emptyText: {
+    fontSize: FontSize.sm,
+    color: Colors.subtext,
+    textAlign: "center",
   },
 });

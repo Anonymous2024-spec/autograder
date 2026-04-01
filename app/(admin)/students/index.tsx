@@ -1,52 +1,98 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
+
+// TODO: Replace with real API call later
+const STUDENTS = [
+  {
+    id: 1,
+    name: "John Doe",
+    reg_no: "23/U/1234",
+    no: "2300712345",
+    course: "BICT",
+    courseColor: Colors.cardBlue,
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    reg_no: "23/U/5678",
+    no: "2300756789",
+    course: "BCS",
+    courseColor: Colors.cardTeal,
+  },
+  {
+    id: 3,
+    name: "Peter Okello",
+    reg_no: "23/U/9101",
+    no: "2300791011",
+    course: "BSE",
+    courseColor: Colors.cardGreen,
+  },
+  {
+    id: 4,
+    name: "Mary Akello",
+    reg_no: "23/U/1121",
+    no: "2300711213",
+    course: "BICT",
+    courseColor: Colors.cardBlue,
+  },
+  {
+    id: 5,
+    name: "David Onen",
+    reg_no: "23/U/1415",
+    no: "2300714151",
+    course: "BCS",
+    courseColor: Colors.cardTeal,
+  },
+];
+
+// Course filter options
+const FILTERS = ["All", "BICT", "BCS", "BSE"];
 
 export default function StudentsScreen() {
   const router = useRouter();
-  
-  // TODO: Replace with real API call later
-  const students = [
-    {
-      id: 1,
-      name: "John Doe",
-      reg_no: "23/U/1234",
-      no: "2300712345",
-      course: "BICT",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      reg_no: "23/U/5678",
-      no: "2300756789",
-      course: "BCS",
-    },
-    {
-      id: 3,
-      name: "Peter Okello",
-      reg_no: "23/U/9101",
-      no: "2300791011",
-      course: "BSE",
-    },
-  ];
+  const insets = useSafeAreaInsets();
 
-  // Handle three dot menu options
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  // Filter students by search and course
+  const filtered = STUDENTS.filter((s) => {
+    const matchSearch =
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.reg_no.toLowerCase().includes(search.toLowerCase()) ||
+      s.no.includes(search);
+    const matchFilter =
+      activeFilter === "All" || s.course === activeFilter;
+    return matchSearch && matchFilter;
+  });
+
   const handleOptions = (student: { id: number; name: string }) => {
     Alert.alert(student.name, "What would you like to do?", [
       {
         text: "Edit",
         onPress: () =>
           router.push({
-            pathname: "/students/edit",
+            pathname: "/(admin)/students/edit",
             params: { id: student.id },
           }),
       },
@@ -68,180 +114,395 @@ export default function StudentsScreen() {
         {
           text: "Delete",
           style: "destructive",
-          // TODO: Replace with real API delete call later
-          onPress: () => console.log("Delete student with id:", id),
+          onPress: () => console.log("Delete student:", id),
         },
       ]
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.root}>
+
+      {/* ── Gradient header ── */}
+      <LinearGradient
+        colors={["#0D1F6B", "#1A3BAA", Colors.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.md }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+
+        {/* Title row */}
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Students</Text>
+            <Text style={styles.headerSub}>
+              {STUDENTS.length} registered students
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() =>
+              router.push({ pathname: "/(admin)/students/register" })
+            }
+          >
+            <Ionicons name="add" size={22} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search bar */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={18} color={Colors.subtext} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search name, reg no, student no..."
+            placeholderTextColor={Colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={Colors.placeholder}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+      </LinearGradient>
+
+      {/* ── Filter chips ── */}
+      <View style={styles.filtersRow}>
+        {FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[
+              styles.filterChip,
+              activeFilter === f && styles.filterChipActive,
+            ]}
+            onPress={() => setActiveFilter(f)}
+          >
+            <Text
+              style={[
+                styles.filterChipText,
+                activeFilter === f && styles.filterChipTextActive,
+              ]}
+            >
+              {f}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── Results count ── */}
+      <View style={styles.resultsRow}>
+        <Text style={styles.resultsText}>
+          Showing{" "}
+          <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
+          {filtered.length === 1 ? "student" : "students"}
+        </Text>
+      </View>
+
+      {/* ── List ── */}
       <FlatList
-        data={students}
+        data={filtered}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons
-              name="people-outline"
-              size={48}
-              color={Colors.border}
-            />
-            <Text style={styles.emptyText}>No students found</Text>
+            <View style={styles.emptyIconBox}>
+              <Ionicons
+                name="people-outline"
+                size={40}
+                color={Colors.primary}
+              />
+            </View>
+            <Text style={styles.emptyTitle}>No Students Found</Text>
+            <Text style={styles.emptyText}>
+              {search
+                ? "Try a different search term"
+                : "Tap + to register a new student"}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
 
-            {/* Avatar with first letter of name */}
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.name[0]}</Text>
-            </View>
-
-            {/* Student details */}
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.name}</Text>
-
-              {/* Reg no and student no on same row */}
-              <View style={styles.metaRow}>
-                <Text style={styles.meta}>{item.reg_no}</Text>
-                <View style={styles.dot} />
-                <Text style={styles.meta}>{item.no}</Text>
-              </View>
-
-              {/* Course badge */}
-              <View style={styles.courseBadge}>
-                <Text style={styles.courseBadgeText}>{item.course}</Text>
-              </View>
-            </View>
-
-            {/* Three dot menu */}
-            <TouchableOpacity
-              onPress={() => handleOptions(item)}
-              style={styles.menuButton}
+            {/* Left — avatar with course color */}
+            <LinearGradient
+              colors={[item.courseColor, item.courseColor + "CC"]}
+              style={styles.cardAvatar}
             >
-              <Ionicons
-                name="ellipsis-vertical"
-                size={20}
-                color={Colors.subtext}
-              />
-            </TouchableOpacity>
+              <Text style={styles.cardAvatarText}>{item.name[0]}</Text>
+            </LinearGradient>
+
+            {/* Middle — info */}
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardName}>{item.name}</Text>
+              <View style={styles.cardMetaRow}>
+                <Ionicons
+                  name="card-outline"
+                  size={12}
+                  color={Colors.subtext}
+                />
+                <Text style={styles.cardMeta}>{item.reg_no}</Text>
+              </View>
+              <View style={styles.cardMetaRow}>
+                <Ionicons
+                  name="person-outline"
+                  size={12}
+                  color={Colors.subtext}
+                />
+                <Text style={styles.cardMeta}>{item.no}</Text>
+              </View>
+            </View>
+
+            {/* Right — course badge + menu */}
+            <View style={styles.cardRight}>
+              <View
+                style={[
+                  styles.courseBadge,
+                  { backgroundColor: item.courseColor + "18" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.courseBadgeText,
+                    { color: item.courseColor },
+                  ]}
+                >
+                  {item.course}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.menuBtn}
+                onPress={() => handleOptions(item)}
+              >
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={18}
+                  color={Colors.subtext}
+                />
+              </TouchableOpacity>
+            </View>
+
           </View>
         )}
       />
 
-      {/* Floating add button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push({ pathname: "/students/register" })}
-      >
-        <Ionicons name="add" size={28} color={Colors.white} />
-      </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  list: {
-    padding: Spacing.lg,
+
+  // ── Header ──
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    overflow: "hidden",
   },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
+  headerShapeL: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: -60,
+    right: -40,
+  },
+  headerShapeS: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    bottom: 10,
+    left: -20,
+  },
+  headerTop: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.md,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: Spacing.md,
-  },
-  avatarText: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
+  headerTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
     color: Colors.white,
   },
-  info: {
-    flex: 1,
+  headerSub: {
+    fontSize: FontSize.sm,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
   },
-  name: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  // Row for reg no and student no
-  metaRow: {
+
+  // Search
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.xs,
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    gap: Spacing.sm,
+    ...Shadows.sm,
   },
-  meta: {
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: 0,
+  },
+
+  // ── Filters ──
+  filtersRow: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+  },
+  filterChipTextActive: {
+    color: Colors.white,
+  },
+
+  // Results
+  resultsRow: {
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  resultsText: {
+    fontSize: FontSize.sm,
+    color: Colors.subtext,
+  },
+  resultsCount: {
+    fontWeight: FontWeight.bold,
+    color: Colors.primary,
+  },
+
+  // ── List ──
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl * 2,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    gap: Spacing.md,
+    ...Shadows.sm,
+  },
+  cardAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardAvatarText: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  cardInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  cardName: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  cardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  cardMeta: {
     fontSize: FontSize.xs,
     color: Colors.subtext,
   },
-  // Separator dot between reg no and student no
-  dot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.subtext,
-    marginHorizontal: Spacing.xs,
+  cardRight: {
+    alignItems: "flex-end",
+    gap: Spacing.xs,
   },
   courseBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.primaryLight,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   courseBadgeText: {
     fontSize: FontSize.xs,
-    fontWeight: "600",
-    color: Colors.primary,
+    fontWeight: FontWeight.bold,
   },
-  menuButton: {
+  menuBtn: {
     padding: Spacing.xs,
   },
+
+  // ── Empty state ──
   emptyContainer: {
     alignItems: "center",
-    marginTop: Spacing.xl * 2,
+    paddingTop: Spacing.xl * 2,
   },
-  emptyText: {
-    fontSize: FontSize.md,
-    color: Colors.subtext,
-    marginTop: Spacing.md,
-  },
-  fab: {
-    position: "absolute",
-    bottom: Spacing.xl,
-    right: Spacing.lg,
-    backgroundColor: Colors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  emptyIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  emptyText: {
+    fontSize: FontSize.sm,
+    color: Colors.subtext,
+    textAlign: "center",
   },
 });

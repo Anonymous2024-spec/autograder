@@ -505,7 +505,11 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.primary,
   },
-
+  avatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
   // Footer
   footer: {
     fontSize: FontSize.xs,

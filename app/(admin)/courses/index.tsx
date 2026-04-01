@@ -1,25 +1,60 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
+
+const COURSES = [
+  {
+    id: 1,
+    name: "Bachelor of Information Technology",
+    code: "BICT",
+    students: 42,
+    color: Colors.cardBlue,
+  },
+  {
+    id: 2,
+    name: "Bachelor of Computer Science",
+    code: "BCS",
+    students: 38,
+    color: Colors.cardTeal,
+  },
+  {
+    id: 3,
+    name: "Bachelor of Software Engineering",
+    code: "BSE",
+    students: 44,
+    color: Colors.cardGreen,
+  },
+];
 
 export default function CoursesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [search, setSearch] = useState("");
 
-  // TODO: Replace with real API call later
-  const courses = [
-    { id: 1, name: "Bachelor of Information Technology", code: "BICT" },
-    { id: 2, name: "Bachelor of Computer Science", code: "BCS" },
-    { id: 3, name: "Bachelor of Software Engineering", code: "BSE" },
-  ];
+  const filtered = COURSES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.code.toLowerCase().includes(search.toLowerCase())
+  );
 
   const handleOptions = (course: { id: number; name: string }) => {
     Alert.alert(course.name, "What would you like to do?", [
@@ -41,141 +76,300 @@ export default function CoursesScreen() {
   };
 
   const confirmDelete = (id: number) => {
-    Alert.alert(
-      "Delete Course",
-      "Are you sure you want to delete this course?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          // TODO: Replace with real API delete call later
-          onPress: () => console.log("Delete course with id:", id),
-        },
-      ]
-    );
+    Alert.alert("Delete Course", "Are you sure?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => console.log("Delete course:", id),
+      },
+    ]);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.root}>
+
+      {/* ── Header ── */}
+      <LinearGradient
+        colors={["#064E3B", "#059669", Colors.cardGreen]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.md }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Courses</Text>
+            <Text style={styles.headerSub}>
+              {COURSES.length} registered courses
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() =>
+              router.push({ pathname: "/(admin)/courses/register" })
+            }
+          >
+            <Ionicons name="add" size={22} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={18} color={Colors.subtext} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search course name or code..."
+            placeholderTextColor={Colors.placeholder}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={18} color={Colors.placeholder} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      <View style={styles.resultsRow}>
+        <Text style={styles.resultsText}>
+          Showing <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
+          {filtered.length === 1 ? "course" : "courses"}
+        </Text>
+      </View>
+
+      {/* ── List ── */}
       <FlatList
-        data={courses}
+        data={filtered}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="book-outline" size={48} color={Colors.border} />
-            <Text style={styles.emptyText}>No courses found</Text>
+            <View style={[styles.emptyIconBox, { backgroundColor: Colors.successLight }]}>
+              <Ionicons name="book-outline" size={40} color={Colors.cardGreen} />
+            </View>
+            <Text style={styles.emptyTitle}>No Courses Found</Text>
+            <Text style={styles.emptyText}>
+              {search ? "Try a different search" : "Tap + to add a course"}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            {/* Icon box */}
-            <View style={styles.iconBox}>
-              <Ionicons name="book-outline" size={22} color={Colors.primary} />
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleOptions(item)}
+            activeOpacity={0.85}
+          >
+            {/* Color bar on left */}
+            <View style={[styles.colorBar, { backgroundColor: item.color }]} />
+
+            {/* Icon */}
+            <View style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}>
+              <Ionicons name="book" size={22} color={item.color} />
             </View>
 
-            {/* Course details */}
-            <View style={styles.info}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.code}>{item.code}</Text>
+            {/* Info */}
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardName} numberOfLines={2}>
+                {item.name}
+              </Text>
+              <View style={styles.cardBottom}>
+                <View style={[styles.codeBadge, { backgroundColor: item.color + "18" }]}>
+                  <Text style={[styles.codeBadgeText, { color: item.color }]}>
+                    {item.code}
+                  </Text>
+                </View>
+                <View style={styles.studentCount}>
+                  <Ionicons
+                    name="people-outline"
+                    size={12}
+                    color={Colors.subtext}
+                  />
+                  <Text style={styles.studentCountText}>
+                    {item.students} students
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            {/* Three dot menu */}
+            {/* Menu */}
             <TouchableOpacity
+              style={styles.menuBtn}
               onPress={() => handleOptions(item)}
-              style={styles.menuButton}
             >
               <Ionicons
                 name="ellipsis-vertical"
-                size={20}
+                size={18}
                 color={Colors.subtext}
               />
             </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         )}
       />
 
-      {/* Floating add button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push({ pathname: "/(admin)/courses/register" })}
-      >
-        <Ionicons name="add" size={28} color={Colors.white} />
-      </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  root: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    overflow: "hidden",
   },
-  list: {
-    padding: Spacing.lg,
+  headerShapeL: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: -60,
+    right: -40,
   },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
+  headerShapeS: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    bottom: 10,
+    left: -20,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.md,
+  },
+  headerTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  headerSub: {
+    fontSize: FontSize.sm,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.sm,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    gap: Spacing.sm,
+    ...Shadows.sm,
   },
-  iconBox: {
-    width: 44,
-    height: 44,
+  searchInput: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: 0,
+  },
+  resultsRow: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  resultsText: { fontSize: FontSize.sm, color: Colors.subtext },
+  resultsCount: { fontWeight: FontWeight.bold, color: Colors.cardGreen },
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl * 2,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    gap: Spacing.md,
+    paddingRight: Spacing.md,
+    paddingVertical: Spacing.md,
+    ...Shadows.sm,
+  },
+  colorBar: {
+    width: 5,
+    height: "100%",
+    borderRadius: 0,
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
     borderRadius: Radius.md,
-    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
   },
-  info: {
-    flex: 1,
-  },
-  name: {
+  cardInfo: { flex: 1 },
+  cardName: {
     fontSize: FontSize.md,
-    fontWeight: "600",
+    fontWeight: FontWeight.semibold,
     color: Colors.text,
+    marginBottom: Spacing.xs,
+    lineHeight: 20,
   },
-  code: {
-    fontSize: FontSize.sm,
+  cardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  codeBadge: {
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+  },
+  codeBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+  },
+  studentCount: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  studentCountText: {
+    fontSize: FontSize.xs,
     color: Colors.subtext,
-    marginTop: Spacing.xs,
   },
-  menuButton: {
-    padding: Spacing.xs,
-  },
+  menuBtn: { padding: Spacing.xs },
   emptyContainer: {
     alignItems: "center",
-    marginTop: Spacing.xl * 2,
+    paddingTop: Spacing.xl * 2,
   },
-  emptyText: {
-    fontSize: FontSize.md,
-    color: Colors.subtext,
-    marginTop: Spacing.md,
-  },
-  fab: {
-    position: "absolute",
-    bottom: Spacing.xl,
-    right: Spacing.lg,
-    backgroundColor: Colors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  emptyIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    marginBottom: Spacing.md,
+  },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  emptyText: {
+    fontSize: FontSize.sm,
+    color: Colors.subtext,
+    textAlign: "center",
   },
 });
