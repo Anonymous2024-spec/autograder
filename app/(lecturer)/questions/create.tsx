@@ -1,269 +1,340 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// questions/create.tsx
+// ─────────────────────────────────────────────────────────────────────────────
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Button from '../../../components/Button';
-import Input from '../../../components/Input';
-import { Colors, FontSize, Spacing, Radius } from '../../../constants';
-import { useState } from 'react';
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Input from "../../../components/Input";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
+
+const LABELS = ["A", "B", "C", "D"];
+
+const LABEL_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function CreateQuestion() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  // State for question text
-  const [question, setQuestion] = useState('');
-
-  // State for course unit id
-  const [courseUnitId, setCourseUnitId] = useState('');
-
-  // State for the four options
-  // is_correct tracks which option is the correct answer
+  const [question, setQuestion] = useState("");
+  const [courseUnitId, setCourseUnitId] = useState("");
+  const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState([
-    { id: 1, text: '', is_correct: false },
-    { id: 2, text: '', is_correct: false },
-    { id: 3, text: '', is_correct: false },
-    { id: 4, text: '', is_correct: false },
+    { id: 1, text: "", is_correct: false },
+    { id: 2, text: "", is_correct: false },
+    { id: 3, text: "", is_correct: false },
+    { id: 4, text: "", is_correct: false },
   ]);
 
-  // Labels for the four options
-  const labels = ['A', 'B', 'C', 'D'];
-
-  // Update the text of a specific option
   const updateOptionText = (index: number, text: string) => {
     const updated = [...options];
     updated[index].text = text;
     setOptions(updated);
   };
 
-  // Mark a specific option as the correct answer
-  // Only one option can be correct at a time
   const markCorrect = (index: number) => {
-    const updated = options.map((opt, i) => ({
-      ...opt,
-      is_correct: i === index,
-    }));
-    setOptions(updated);
+    setOptions(options.map((opt, i) => ({ ...opt, is_correct: i === index })));
   };
 
-  // Handle form submission
-  // TODO: Replace with real API call later
+  const correctIndex = options.findIndex((o) => o.is_correct);
+
   const handleSubmit = () => {
-    // Basic validation
-    if (!question || !courseUnitId) {
-      alert('Please fill in the question and course unit');
-      return;
-    }
-
-    // Check all options are filled
-    if (options.some((opt) => !opt.text)) {
-      alert('Please fill in all options');
-      return;
-    }
-
-    // Check a correct answer is selected
-    if (!options.some((opt) => opt.is_correct)) {
-      alert('Please mark the correct answer');
-      return;
-    }
-
-    // TODO: Send data to API
-    console.log({ question, courseUnitId, options });
-
-    // Go back to questions list
-    router.back();
+    if (!question || !courseUnitId) { alert("Please fill in the question and course unit"); return; }
+    if (options.some((opt) => !opt.text)) { alert("Please fill in all options"); return; }
+    if (!options.some((opt) => opt.is_correct)) { alert("Please mark the correct answer"); return; }
+    setLoading(true);
+    setTimeout(() => { setLoading(false); router.back(); }, 1000);
   };
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-        >
-
-          {/* Form title */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>New Question</Text>
-            <Text style={styles.subtitle}>Add a question and mark the correct answer</Text>
+      {/* ── Header ── */}
+      <LinearGradient
+        colors={["#062B6E", "#1044B2", "#1A56DB"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+        <View style={styles.headerTop}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>New Question</Text>
+            <Text style={styles.headerSub}>Add a question and mark the correct answer</Text>
           </View>
+        </View>
+        {/* Answer indicator pill */}
+        <View style={styles.answerPill}>
+          {correctIndex >= 0 ? (
+            <>
+              <View style={[styles.answerPillDot, { backgroundColor: LABEL_COLORS[correctIndex] }]} />
+              <Text style={styles.answerPillText}>
+                Correct answer: Option {LABELS[correctIndex]}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="alert-circle-outline" size={13} color="rgba(255,255,255,0.6)" />
+              <Text style={[styles.answerPillText, { color: "rgba(255,255,255,0.6)" }]}>
+                No correct answer marked yet
+              </Text>
+            </>
+          )}
+        </View>
+      </LinearGradient>
 
-          <View style={styles.form}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Question section ── */}
+        <Text style={styles.sectionLabel}>Question Details</Text>
+        <View style={styles.formCard}>
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="book-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Course Unit ID"
+                placeholder="e.g. 1"
+                value={courseUnitId}
+                onChangeText={setCourseUnitId}
+                keyboardType="numeric"
+                icon="book-outline"
+              />
+            </View>
+          </View>
+          <View style={styles.fieldDivider} />
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
+              <Ionicons name="help-circle-outline" size={18} color={Colors.accent} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Question"
+                placeholder="Enter your MCQ question here..."
+                value={question}
+                onChangeText={setQuestion}
+                icon="help-circle-outline"
+                multiline
+              />
+            </View>
+          </View>
+        </View>
 
-            {/* Course unit input */}
-            <Input
-              label="Course Unit ID"
-              placeholder="e.g. 1"
-              value={courseUnitId}
-              onChangeText={setCourseUnitId}
-              keyboardType="numeric"
-            />
+        {/* ── Options section ── */}
+        <Text style={styles.sectionLabel}>Answer Options</Text>
+        <Text style={styles.optionsHint}>
+          Tap the radio button to mark the correct answer
+        </Text>
 
-            {/* Question input */}
-            <Input
-              label="Question"
-              placeholder="Enter your MCQ question here..."
-              value={question}
-              onChangeText={setQuestion}
-            />
+        {options.map((opt, index) => {
+          const isCorrect = opt.is_correct;
+          const color = LABEL_COLORS[index];
+          return (
+            <View
+              key={opt.id}
+              style={[
+                styles.optionCard,
+                isCorrect && { borderColor: color, backgroundColor: color + "08" },
+              ]}
+            >
+              {/* Correct answer bar */}
+              {isCorrect && <View style={[styles.optionBar, { backgroundColor: color }]} />}
 
-            {/* Options section */}
-            <Text style={styles.optionsLabel}>Answer Options</Text>
-            <Text style={styles.optionsHint}>
-              Tap the circle to mark the correct answer
-            </Text>
-
-            {/* Render each option */}
-            {options.map((opt, index) => (
-              <View key={opt.id} style={styles.optionRow}>
-
-                {/* Radio button to mark correct answer */}
-                <TouchableOpacity
-                  style={styles.radio}
-                  onPress={() => markCorrect(index)}
-                >
-                  {/* Show filled circle if this option is correct */}
-                  {opt.is_correct ? (
-                    <Ionicons name="radio-button-on" size={24} color={Colors.primary} />
-                  ) : (
-                    <Ionicons name="radio-button-off" size={24} color={Colors.border} />
-                  )}
-                </TouchableOpacity>
-
-                {/* Option label A, B, C, D */}
-                <View style={styles.optionLabel}>
-                  <Text style={styles.optionLetter}>{labels[index]}</Text>
+              <View style={styles.optionContent}>
+                {/* Label + Radio row */}
+                <View style={styles.optionTop}>
+                  <View style={[styles.optionLabelBox, { backgroundColor: isCorrect ? color : Colors.border }]}>
+                    <Text style={styles.optionLetter}>{LABELS[index]}</Text>
+                  </View>
+                  <Text style={[styles.optionHint, isCorrect && { color }]}>
+                    {isCorrect ? "✓ Correct answer" : `Option ${LABELS[index]}`}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.radioBtn, isCorrect && { borderColor: color }]}
+                    onPress={() => markCorrect(index)}
+                  >
+                    {isCorrect && <View style={[styles.radioDot, { backgroundColor: color }]} />}
+                  </TouchableOpacity>
                 </View>
 
-                {/* Option text input */}
-                <View style={styles.optionInputContainer}>
+                {/* Input */}
+                <View style={styles.optionInputWrap}>
                   <Input
                     label=""
-                    placeholder={`Option ${labels[index]}`}
+                    placeholder={`Type option ${LABELS[index]} here...`}
                     value={opt.text}
                     onChangeText={(text) => updateOptionText(index, text)}
                   />
                 </View>
-
               </View>
-            ))}
+            </View>
+          );
+        })}
 
-            {/* Submit button */}
-            <Button
-              title="Save Question"
-              onPress={handleSubmit}
-            />
+        <View style={styles.infoNote}>
+          <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
+          <Text style={styles.infoNoteText}>
+            Students will see these options on the printed answer sheet. Make sure each option is clear.
+          </Text>
+        </View>
+      </ScrollView>
 
-          </View>
-
-        </ScrollView>
-      </SafeAreaView>
+      {/* ── Bottom bar ── */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <Text style={styles.cancelBtnText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.submitGradient}
+          >
+            {loading ? (
+              <Text style={styles.submitBtnText}>Saving...</Text>
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
+                <Text style={styles.submitBtnText}>Save Question</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Main container
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  root: { flex: 1, backgroundColor: Colors.background },
+  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
+  headerShapeL: {
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -40,
   },
+  headerShapeS: {
+    position: "absolute", width: 100, height: 100, borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)", bottom: -20, left: -20,
+  },
+  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center", alignItems: "center",
+  },
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
+  headerSub: { fontSize: FontSize.sm, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  answerPill: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: Radius.full,
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md, paddingVertical: 5, gap: 6,
+  },
+  answerPillDot: { width: 8, height: 8, borderRadius: 4 },
+  answerPillText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.white },
+  body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
+  sectionLabel: {
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
+    textTransform: "uppercase", letterSpacing: 1.2,
+    marginBottom: Spacing.sm, marginTop: Spacing.md,
+  },
+  optionsHint: { fontSize: FontSize.sm, color: Colors.subtext, marginBottom: Spacing.md },
+  formCard: {
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: Colors.border,
+    overflow: "hidden", ...Shadows.sm, marginBottom: Spacing.sm,
+  },
+  fieldRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.md,
+  },
+  fieldIcon: {
+    width: 38, height: 38, borderRadius: Radius.md,
+    justifyContent: "center", alignItems: "center", marginTop: Spacing.lg + 2,
+  },
+  fieldInput: { flex: 1 },
+  fieldDivider: { height: 1, backgroundColor: Colors.border, marginLeft: Spacing.md + 38 + Spacing.md },
 
-  // Scrollview content padding
-  content: {
-    padding: Spacing.lg,
+  // Option cards
+  optionCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    borderWidth: 1.5, borderColor: Colors.border,
+    marginBottom: Spacing.sm, overflow: "hidden", ...Shadows.sm,
   },
-
-  // Title section container
-  titleContainer: {
-    marginBottom: Spacing.lg,
+  optionBar: { width: 4 },
+  optionContent: { flex: 1, padding: Spacing.md },
+  optionTop: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm, gap: Spacing.sm },
+  optionLabelBox: {
+    width: 28, height: 28, borderRadius: Radius.sm,
+    justifyContent: "center", alignItems: "center",
   },
-
-  // Form title
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+  optionLetter: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.white },
+  optionHint: { flex: 1, fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.subtext },
+  radioBtn: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: Colors.border,
+    justifyContent: "center", alignItems: "center",
   },
-
-  // Form subtitle
-  subtitle: {
-    fontSize: FontSize.sm,
-    color: Colors.subtext,
+  radioDot: { width: 10, height: 10, borderRadius: 5 },
+  optionInputWrap: { marginTop: -Spacing.xs },
+  infoNote: {
+    flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
+    backgroundColor: Colors.primaryLight, borderRadius: Radius.lg,
+    padding: Spacing.md, marginTop: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.primary + "20",
   },
-
-  // Form container
-  form: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    // Shadow for iOS
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    // Shadow for Android
-    elevation: 3,
+  infoNoteText: { flex: 1, fontSize: FontSize.xs, color: Colors.primary, lineHeight: 18 },
+  bottomBar: {
+    flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
+    backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
+    gap: Spacing.md, ...Shadows.md,
   },
-
-  // Options section label
-  optionsLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+  cancelBtn: {
+    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: Radius.lg, paddingVertical: Spacing.md,
+    alignItems: "center", justifyContent: "center",
   },
-
-  // Options hint text
-  optionsHint: {
-    fontSize: FontSize.xs,
-    color: Colors.subtext,
-    marginBottom: Spacing.md,
+  cancelBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
+  submitBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
+  submitBtnDisabled: { opacity: 0.7 },
+  submitGradient: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: Spacing.md, gap: Spacing.sm,
   },
-
-  // Each option row
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-
-  // Radio button
-  radio: {
-    marginRight: Spacing.sm,
-  },
-
-  // Option label box A, B, C, D
-  optionLabel: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.sm,
-  },
-
-  // Option letter text
-  optionLetter: {
-    fontSize: FontSize.sm,
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
-
-  // Option input container takes remaining space
-  optionInputContainer: {
-    flex: 1,
-  },
+  submitBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
 });

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -10,10 +11,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
 
-// TODO: Replace with real API call using courseId
 const ALL_QUESTIONS: Record<number, { id: number; question: string; course_id: number }[]> = {
   1: [
     { id: 1, question: "What is the full meaning of CPU?", course_id: 1 },
@@ -29,150 +36,130 @@ const ALL_QUESTIONS: Record<number, { id: number; question: string; course_id: n
   ],
 };
 
-// Two steps — select questions, then preview sheet
 type Step = "select" | "preview";
 
 export default function AnswerSheetScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { courseId, courseName, courseCode } = useLocalSearchParams<{
-    courseId: string;
-    courseName: string;
-    courseCode: string;
+    courseId: string; courseName: string; courseCode: string;
   }>();
 
-  // Get questions for this course
   const courseQuestions = ALL_QUESTIONS[Number(courseId)] ?? [];
-
-  // Track current step
   const [step, setStep] = useState<Step>("select");
+  const [selectedIds, setSelectedIds] = useState<number[]>(courseQuestions.map((q) => q.id));
 
-  // Track which question ids are selected
-  const [selectedIds, setSelectedIds] = useState<number[]>(
-    // Default — all selected
-    courseQuestions.map((q) => q.id)
-  );
-
-  // Toggle a question selection
   const toggleQuestion = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
   };
 
-  // Select all / deselect all
   const toggleAll = () => {
-    if (selectedIds.length === courseQuestions.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(courseQuestions.map((q) => q.id));
-    }
+    setSelectedIds(selectedIds.length === courseQuestions.length ? [] : courseQuestions.map((q) => q.id));
   };
 
-  // Questions that will appear on the sheet
-  const selectedQuestions = courseQuestions.filter((q) =>
-    selectedIds.includes(q.id)
-  );
+  const selectedQuestions = courseQuestions.filter((q) => selectedIds.includes(q.id));
 
-  // Proceed to preview
   const handleProceed = () => {
-    if (selectedIds.length === 0) {
-      Alert.alert(
-        "No Questions Selected",
-        "Please select at least one question."
-      );
-      return;
-    }
+    if (selectedIds.length === 0) { Alert.alert("No Questions", "Please select at least one question."); return; }
     setStep("preview");
   };
 
-  // TODO: Replace with real expo-print / expo-sharing call
   const handlePrint = () => {
-    Alert.alert(
-      "Print / Share",
-      "PDF export will be available once the backend is connected.",
-      [{ text: "OK" }]
-    );
+    Alert.alert("Print / Share", "PDF export will be available once the backend is connected.", [{ text: "OK" }]);
   };
 
-  // ── Step 1: Question selection ──
+  // ── STEP 1: Select questions ──
   if (step === "select") {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.root}>
+        {/* Header */}
+        <LinearGradient
+          colors={["#062B6E", "#1044B2", "#1A56DB"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}
+        >
+          <View style={styles.headerShapeL} />
+          <View style={styles.headerShapeS} />
 
-        {/* Header info */}
-        <View style={styles.selectionHeader}>
-          <View style={styles.courseTag}>
-            <Text style={styles.courseTagText}>{courseCode}</Text>
+          <View style={styles.headerTop}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={20} color={Colors.white} />
+            </TouchableOpacity>
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>Answer Sheet</Text>
+              <Text style={styles.headerSub}>Select questions to include</Text>
+            </View>
+            <View style={[styles.courseCodeBadge]}>
+              <Text style={styles.courseCodeText}>{courseCode}</Text>
+            </View>
           </View>
-          <Text style={styles.selectionTitle} numberOfLines={1}>
-            {courseName}
-          </Text>
-          <Text style={styles.selectionSubtitle}>
-            Select questions to include in the answer sheet
-          </Text>
-        </View>
 
-        {/* Select all toggle */}
+          {/* Stats strip */}
+          <View style={styles.statsStrip}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{courseQuestions.length}</Text>
+              <Text style={styles.statLbl}>Total</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{selectedIds.length}</Text>
+              <Text style={styles.statLbl}>Selected</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{courseQuestions.length - selectedIds.length}</Text>
+              <Text style={styles.statLbl}>Excluded</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Select all row */}
         <View style={styles.selectAllRow}>
           <Text style={styles.selectAllLabel}>
-            {selectedIds.length} of {courseQuestions.length} selected
+            {selectedIds.length} of {courseQuestions.length} questions selected
           </Text>
-          <TouchableOpacity onPress={toggleAll} style={styles.selectAllBtn}>
+          <TouchableOpacity style={styles.selectAllBtn} onPress={toggleAll}>
             <Text style={styles.selectAllBtnText}>
-              {selectedIds.length === courseQuestions.length
-                ? "Deselect All"
-                : "Select All"}
+              {selectedIds.length === courseQuestions.length ? "Deselect All" : "Select All"}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Questions list */}
         <FlatList
           data={courseQuestions}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.selectionList}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons
-                name="help-circle-outline"
-                size={48}
-                color={Colors.border}
-              />
-              <Text style={styles.emptyText}>No questions for this course</Text>
+              <View style={styles.emptyIconBox}>
+                <Ionicons name="help-circle-outline" size={40} color={Colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>No questions for this course</Text>
             </View>
           }
           renderItem={({ item, index }) => {
             const isSelected = selectedIds.includes(item.id);
             return (
               <TouchableOpacity
-                style={[
-                  styles.selectionCard,
-                  isSelected && styles.selectionCardActive,
-                ]}
+                style={[styles.selectionCard, isSelected && styles.selectionCardActive]}
                 onPress={() => toggleQuestion(item.id)}
+                activeOpacity={0.85}
               >
                 {/* Checkbox */}
-                <View
-                  style={[
-                    styles.checkbox,
-                    isSelected && styles.checkboxActive,
-                  ]}
-                >
-                  {isSelected && (
-                    <Ionicons name="checkmark" size={14} color={Colors.white} />
-                  )}
+                <View style={[styles.checkbox, isSelected && styles.checkboxActive]}>
+                  {isSelected && <Ionicons name="checkmark" size={13} color={Colors.white} />}
                 </View>
-
-                {/* Question number */}
-                <View style={styles.questionNumBox}>
-                  <Text style={styles.questionNumText}>{index + 1}</Text>
+                {/* Number */}
+                <View style={[styles.questionNumBox, isSelected && { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                  <Text style={[styles.questionNumText, isSelected && { color: Colors.white }]}>
+                    {index + 1}
+                  </Text>
                 </View>
-
-                {/* Question text */}
+                {/* Text */}
                 <Text
-                  style={[
-                    styles.selectionQuestionText,
-                    isSelected && styles.selectionQuestionTextActive,
-                  ]}
+                  style={[styles.selectionText, isSelected && styles.selectionTextActive]}
                   numberOfLines={2}
                 >
                   {item.question}
@@ -182,519 +169,311 @@ export default function AnswerSheetScreen() {
           }}
         />
 
-        {/* Proceed button */}
-        <View style={styles.bottomBar}>
+        {/* Bottom bar */}
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.proceedBtn,
-              selectedIds.length === 0 && styles.proceedBtnDisabled,
-            ]}
+            style={[styles.proceedBtn, selectedIds.length === 0 && styles.proceedBtnDisabled]}
             onPress={handleProceed}
             disabled={selectedIds.length === 0}
+            activeOpacity={0.85}
           >
-            <Ionicons
-              name="document-text-outline"
-              size={20}
-              color={Colors.white}
-            />
-            <Text style={styles.proceedBtnText}>
-              Preview Sheet ({selectedIds.length} Questions)
-            </Text>
-            <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+            <LinearGradient
+              colors={selectedIds.length > 0 ? [Colors.primary, Colors.primaryDark] : [Colors.border, Colors.border]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.proceedGradient}
+            >
+              <Ionicons name="document-text-outline" size={18} color={Colors.white} />
+              <Text style={styles.proceedBtnText}>
+                Preview Sheet ({selectedIds.length})
+              </Text>
+              <Ionicons name="arrow-forward" size={16} color={Colors.white} />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-
-      </SafeAreaView>
+      </View>
     );
   }
 
-  // ── Step 2: Sheet preview ──
+  // ── STEP 2: Preview ──
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.root}>
+      {/* Header */}
+      <LinearGradient
+        colors={["#062B6E", "#1044B2", "#1A56DB"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+        <View style={styles.headerTop}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setStep("select")}>
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Sheet Preview</Text>
+            <Text style={styles.headerSub}>{selectedQuestions.length} questions · Ready to print</Text>
+          </View>
+          <View style={styles.courseCodeBadge}>
+            <Text style={styles.courseCodeText}>{courseCode}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.previewContent, { paddingBottom: insets.bottom + 100 }]}
       >
-
-        {/* Back to selection */}
-        <TouchableOpacity
-          style={styles.backToSelection}
-          onPress={() => setStep("select")}
-        >
-          <Ionicons name="arrow-back" size={16} color={Colors.primary} />
-          <Text style={styles.backToSelectionText}>Edit Selection</Text>
-        </TouchableOpacity>
-
-        {/* ── Sheet header ── */}
-        <View style={styles.sheetHeader}>
-          <Text style={styles.university}>Gulu University</Text>
-          <Text style={styles.sheetTitle}>MCQ Answer Sheet</Text>
-          <Text style={styles.sheetCourse}>
-            {courseCode} — {courseName}
-          </Text>
-          <View style={styles.dividerLine} />
-
-          {/* Student info fields */}
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Name:</Text>
-            <View style={styles.infoLine} />
+        {/* Sheet paper */}
+        <View style={styles.sheetPaper}>
+          {/* University header */}
+          <View style={styles.sheetHeaderSection}>
+            <View style={styles.sheetLogoBox}>
+              <Ionicons name="school" size={24} color={Colors.primary} />
+            </View>
+            <View style={styles.sheetHeaderInfo}>
+              <Text style={styles.sheetUniversity}>GULU UNIVERSITY</Text>
+              <Text style={styles.sheetTitle}>MCQ Answer Sheet</Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Reg No:</Text>
-            <View style={styles.infoLine} />
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date:</Text>
-            <View style={styles.infoLine} />
-          </View>
-        </View>
 
-        {/* ── Instructions ── */}
-        <View style={styles.instructionsBox}>
-          <Text style={styles.instructionsTitle}>Instructions:</Text>
-          <Text style={styles.instructionsText}>
-            Write the letter of your chosen answer (A, B, C or D) clearly in
-            the box provided for each question. Use a pen. Do not use correction
-            fluid.
-          </Text>
-        </View>
+          <View style={styles.sheetDivider} />
 
-        {/* ── Answer boxes grid ── */}
-        <View style={styles.answersSection}>
-          <Text style={styles.answersSectionTitle}>
-            Answers ({selectedQuestions.length} Questions)
+          {/* Course info */}
+          <View style={styles.sheetCourseRow}>
+            <View style={[styles.sheetCourseBadge, { backgroundColor: Colors.primaryLight }]}>
+              <Text style={[styles.sheetCourseCode, { color: Colors.primary }]}>{courseCode}</Text>
+            </View>
+            <Text style={styles.sheetCourseName} numberOfLines={1}>{courseName}</Text>
+          </View>
+
+          <View style={styles.sheetDivider} />
+
+          {/* Student info lines */}
+          <View style={styles.sheetInfoSection}>
+            {["Name", "Reg No", "Date"].map((label) => (
+              <View key={label} style={styles.sheetInfoRow}>
+                <Text style={styles.sheetInfoLabel}>{label}:</Text>
+                <View style={styles.sheetInfoLine} />
+              </View>
+            ))}
+          </View>
+
+          {/* Instructions */}
+          <View style={styles.instructionsBox}>
+            <Text style={styles.instructionsTitle}>Instructions</Text>
+            <Text style={styles.instructionsText}>
+              Write the letter of your answer (A, B, C or D) clearly in the box for each question. Use a pen. Do not use correction fluid.
+            </Text>
+          </View>
+
+          {/* Answer grid */}
+          <Text style={styles.answersTitle}>
+            Answer Boxes — {selectedQuestions.length} Questions
           </Text>
           <View style={styles.answersGrid}>
             {selectedQuestions.map((q, index) => (
               <View key={q.id} style={styles.answerItem}>
-                <Text style={styles.answerNumber}>{index + 1}.</Text>
-                {/* Box where student writes their answer */}
+                <Text style={styles.answerNum}>{index + 1}.</Text>
                 <View style={styles.answerBox} />
               </View>
             ))}
           </View>
-        </View>
 
-        {/* ── Question reference list ── */}
-        <View style={styles.questionList}>
-          <Text style={styles.questionListTitle}>Question Reference</Text>
+          <View style={styles.sheetDivider} />
+
+          {/* Question reference */}
+          <Text style={styles.refTitle}>Question Reference</Text>
           {selectedQuestions.map((q, index) => (
-            <View key={q.id} style={styles.questionRow}>
-              <View style={styles.questionNumBadge}>
-                <Text style={styles.questionNumBadgeText}>{index + 1}</Text>
+            <View key={q.id} style={styles.refRow}>
+              <View style={styles.refNumBox}>
+                <Text style={styles.refNum}>{index + 1}</Text>
               </View>
-              <Text style={styles.questionRowText} numberOfLines={2}>
-                {q.question}
-              </Text>
+              <Text style={styles.refText} numberOfLines={2}>{q.question}</Text>
             </View>
           ))}
-        </View>
 
-        {/* ── Footer ── */}
-        <View style={styles.sheetFooter}>
-          <Text style={styles.footerText}>
-            AutoGrader — Gulu University © 2025
-          </Text>
+          {/* Footer */}
+          <View style={styles.sheetFooter}>
+            <Text style={styles.sheetFooterText}>AutoGrader · Gulu University © 2025</Text>
+          </View>
         </View>
-
       </ScrollView>
 
-      {/* Print / Share button */}
-      <TouchableOpacity style={styles.printBtn} onPress={handlePrint}>
-        <Ionicons name="print-outline" size={20} color={Colors.white} />
-        <Text style={styles.printBtnText}>Print / Share</Text>
-      </TouchableOpacity>
-
-    </SafeAreaView>
+      {/* Print button */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => setStep("select")} activeOpacity={0.7}>
+          <Ionicons name="create-outline" size={16} color={Colors.subtext} />
+          <Text style={styles.cancelBtnText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.proceedBtn} onPress={handlePrint} activeOpacity={0.85}>
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.proceedGradient}
+          >
+            <Ionicons name="print-outline" size={18} color={Colors.white} />
+            <Text style={styles.proceedBtnText}>Print / Share PDF</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  root: { flex: 1, backgroundColor: Colors.background },
+  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
+  headerShapeL: {
+    position: "absolute", width: 220, height: 220, borderRadius: 110,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -70, right: -50,
   },
-  content: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.xl * 3,
+  headerShapeS: {
+    position: "absolute", width: 110, height: 110, borderRadius: 55,
+    backgroundColor: "rgba(255,255,255,0.05)", bottom: -20, left: -20,
   },
+  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center", alignItems: "center",
+  },
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
+  headerSub: { fontSize: FontSize.sm, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  courseCodeBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm, paddingVertical: 5,
+  },
+  courseCodeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.white },
+  statsStrip: {
+    flexDirection: "row", backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: Radius.lg, paddingVertical: Spacing.md,
+  },
+  statItem: { flex: 1, alignItems: "center" },
+  statNum: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
+  statLbl: { fontSize: FontSize.xs, color: "rgba(255,255,255,0.65)", marginTop: 2 },
+  statDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.2)" },
 
-  // ── Selection step ──
-  selectionHeader: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  courseTag: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.primaryLight,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    marginBottom: Spacing.xs,
-  },
-  courseTagText: {
-    fontSize: FontSize.xs,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
-  selectionTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
-  },
-  selectionSubtitle: {
-    fontSize: FontSize.sm,
-    color: Colors.subtext,
-  },
-
-  // Select all row
+  // Select step
   selectAllRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
   },
-  selectAllLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.subtext,
-    fontWeight: "500",
-  },
+  selectAllLabel: { fontSize: FontSize.sm, color: Colors.subtext },
   selectAllBtn: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    backgroundColor: Colors.primaryLight,
-    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryLight, borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs,
   },
-  selectAllBtnText: {
-    fontSize: FontSize.xs,
-    fontWeight: "600",
-    color: Colors.primary,
-  },
-
-  // Selection list
-  selectionList: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl * 3,
-  },
+  selectAllBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.primary },
+  selectionList: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl * 3 },
   selectionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.white,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: Spacing.sm,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    padding: Spacing.md, marginBottom: Spacing.sm,
+    borderWidth: 1.5, borderColor: Colors.border,
+    gap: Spacing.md, ...Shadows.sm, overflow: "hidden",
   },
-  selectionCardActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
+  selectionCardActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 22, height: 22, borderRadius: 5,
+    borderWidth: 2, borderColor: Colors.border,
+    justifyContent: "center", alignItems: "center",
   },
-  checkboxActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
+  checkboxActive: { backgroundColor: Colors.white, borderColor: Colors.white },
   questionNumBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.border,
-    justifyContent: "center",
-    alignItems: "center",
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center", alignItems: "center",
   },
-  questionNumText: {
-    fontSize: FontSize.xs,
-    fontWeight: "bold",
-    color: Colors.subtext,
+  questionNumText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.primary },
+  selectionText: { flex: 1, fontSize: FontSize.sm, color: Colors.text, lineHeight: 20 },
+  selectionTextActive: { color: Colors.white, fontWeight: FontWeight.medium },
+  emptyContainer: { alignItems: "center", paddingTop: Spacing.xl * 2 },
+  emptyIconBox: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center", alignItems: "center", marginBottom: Spacing.md,
   },
-  selectionQuestionText: {
-    flex: 1,
-    fontSize: FontSize.sm,
-    color: Colors.text,
-    lineHeight: 20,
-  },
-  selectionQuestionTextActive: {
-    color: Colors.primary,
-    fontWeight: "500",
-  },
+  emptyTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
 
-  // Bottom bar
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: Spacing.lg,
-    backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+  // Preview step
+  previewContent: { padding: Spacing.lg },
+  sheetPaper: {
+    backgroundColor: Colors.white, borderRadius: Radius.xl,
+    padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border,
+    ...Shadows.md,
   },
-  proceedBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+  sheetHeaderSection: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
+  sheetLogoBox: {
+    width: 44, height: 44, borderRadius: Radius.md,
+    backgroundColor: Colors.primaryLight,
+    justifyContent: "center", alignItems: "center",
   },
-  proceedBtnDisabled: {
-    backgroundColor: Colors.border,
+  sheetHeaderInfo: { flex: 1 },
+  sheetUniversity: {
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
+    letterSpacing: 1.5, textTransform: "uppercase",
   },
-  proceedBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.white,
-  },
-
-  // ── Preview step ──
-  backToSelection: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  backToSelectionText: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.primary,
-  },
-
-  // Sheet header
-  sheetHeader: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  university: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.subtext,
-    textAlign: "center",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  sheetTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: "bold",
-    color: Colors.text,
-    textAlign: "center",
-    marginTop: Spacing.xs,
-  },
-  sheetCourse: {
-    fontSize: FontSize.sm,
-    color: Colors.primary,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  dividerLine: {
-    height: 2,
-    backgroundColor: Colors.primary,
-    borderRadius: 1,
-    marginBottom: Spacing.lg,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  infoLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.text,
-    width: 60,
-  },
-  infoLine: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: Colors.border,
-  },
-
-  // Instructions
+  sheetTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text, marginTop: 2 },
+  sheetDivider: { height: 1.5, backgroundColor: Colors.border, marginVertical: Spacing.md },
+  sheetCourseRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.sm },
+  sheetCourseBadge: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 3 },
+  sheetCourseCode: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  sheetCourseName: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textSecondary },
+  sheetInfoSection: { gap: Spacing.md, marginBottom: Spacing.md },
+  sheetInfoRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  sheetInfoLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text, width: 55 },
+  sheetInfoLine: { flex: 1, height: 1.5, backgroundColor: Colors.borderDark },
   instructionsBox: {
+    backgroundColor: Colors.primaryLight, borderRadius: Radius.md,
+    padding: Spacing.md, marginBottom: Spacing.md,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary,
+  },
+  instructionsTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.primary, marginBottom: 4 },
+  instructionsText: { fontSize: FontSize.sm, color: Colors.text, lineHeight: 20 },
+  answersTitle: {
+    fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text,
+    marginBottom: Spacing.md,
+  },
+  answersGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.md, marginBottom: Spacing.md },
+  answerItem: { flexDirection: "row", alignItems: "center", width: "22%", gap: Spacing.xs },
+  answerNum: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
+  answerBox: { width: 34, height: 34, borderWidth: 2, borderColor: Colors.text, borderRadius: Radius.xs },
+  refTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text, marginBottom: Spacing.md },
+  refRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.sm, gap: Spacing.sm },
+  refNumBox: {
+    width: 22, height: 22, borderRadius: 11,
     backgroundColor: Colors.primaryLight,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
+    justifyContent: "center", alignItems: "center",
   },
-  instructionsTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: "700",
-    color: Colors.primary,
-    marginBottom: Spacing.xs,
-  },
-  instructionsText: {
-    fontSize: FontSize.sm,
-    color: Colors.text,
-    lineHeight: 20,
-  },
+  refNum: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.primary },
+  refText: { flex: 1, fontSize: FontSize.sm, color: Colors.text, lineHeight: 20 },
+  sheetFooter: { alignItems: "center", marginTop: Spacing.lg },
+  sheetFooterText: { fontSize: FontSize.xs, color: Colors.placeholder },
 
-  // Answer boxes
-  answersSection: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+  // Bottom bar (shared)
+  bottomBar: {
+    flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
+    backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
+    gap: Spacing.md, ...Shadows.md,
   },
-  answersSectionTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.md,
+  cancelBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: Radius.lg, paddingVertical: Spacing.md, gap: Spacing.xs,
   },
-  answersGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.md,
+  cancelBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
+  proceedBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
+  proceedBtnDisabled: { opacity: 0.5 },
+  proceedGradient: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: Spacing.md, gap: Spacing.sm,
   },
-  answerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "22%",
-    gap: Spacing.xs,
-  },
-  answerNumber: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.text,
-  },
-  answerBox: {
-    width: 36,
-    height: 36,
-    borderWidth: 2,
-    borderColor: Colors.text,
-    borderRadius: Radius.sm,
-  },
-
-  // Question reference
-  questionList: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  questionListTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.md,
-  },
-  questionRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  questionNumBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  questionNumBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: "bold",
-    color: Colors.primary,
-  },
-  questionRowText: {
-    flex: 1,
-    fontSize: FontSize.sm,
-    color: Colors.text,
-    lineHeight: 20,
-  },
-
-  // Footer
-  sheetFooter: {
-    alignItems: "center",
-    paddingTop: Spacing.md,
-  },
-  footerText: {
-    fontSize: FontSize.xs,
-    color: Colors.placeholder,
-  },
-
-  // Print button
-  printBtn: {
-    position: "absolute",
-    bottom: Spacing.xl,
-    left: Spacing.lg,
-    right: Spacing.lg,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  printBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.white,
-  },
-
-  // Empty state
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: Spacing.xl * 2,
-  },
-  emptyText: {
-    fontSize: FontSize.md,
-    color: Colors.subtext,
-    marginTop: Spacing.md,
-  },
+  proceedBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
 });
