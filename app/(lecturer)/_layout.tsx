@@ -4,10 +4,7 @@ export default function LecturerLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="profile"
-        options={{ headerShown: true, title: "Profile" }}
-      />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
 
       {/* questions/index.tsx → name is "questions" not "questions/index" */}
       <Stack.Screen

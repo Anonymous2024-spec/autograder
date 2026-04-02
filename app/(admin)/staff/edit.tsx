@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -9,188 +11,536 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Button from "../../../components/Button";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Input from "../../../components/Input";
-import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import {
+  Colors,
+  FontSize,
+  FontWeight,
+  Radius,
+  Shadows,
+  Spacing,
+} from "../../../constants";
+
+const ROLES = [
+  {
+    id: "lecturer",
+    label: "Lecturer",
+    icon: "school-outline",
+    color: Colors.primary,
+    bg: Colors.primaryLight,
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    icon: "shield-outline",
+    color: Colors.cardPurple,
+    bg: "#EDE9FE",
+  },
+];
 
 export default function EditStaff() {
   const router = useRouter();
-
-  // Get staff id passed from list screen
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
 
-  // Pre-filled form values
-  // TODO: Replace with real API call to fetch staff by id
+  // TODO: Replace with real API fetch by id
   const [username, setUsername] = useState("Dr. Okello");
   const [email, setEmail] = useState("okello@gulu.ac.ug");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("lecturer");
+  const [loading, setLoading] = useState(false);
 
-  // Handle form submission
-  const handleSubmit = () => {
-    if (!username || !email) {
-      alert("Please fill in all fields");
-      return;
+  const [errors, setErrors] = useState({ username: "", email: "" });
+
+  const validate = () => {
+    const e = { username: "", email: "" };
+    let valid = true;
+    if (!username.trim()) {
+      e.username = "Username is required";
+      valid = false;
     }
-
-    // TODO: Send updated data to API
-    console.log("Update staff:", { id, username, email, role });
-
-    // Go back to staff list
-    router.back();
+    if (!email.trim()) {
+      e.email = "Email is required";
+      valid = false;
+    } else if (!email.includes("@")) {
+      e.email = "Enter a valid email";
+      valid = false;
+    }
+    setErrors(e);
+    return valid;
   };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    // TODO: PUT to API
+    setTimeout(() => {
+      setLoading(false);
+      router.back();
+    }, 1000);
+  };
+
+  const selectedRole = ROLES.find((r) => r.id === role)!;
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-        >
-          {/* Form title */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Edit Staff</Text>
-            <Text style={styles.subtitle}>
-              Update the staff member details below
+      {/* ── Gradient header ── */}
+      <LinearGradient
+        colors={["#2D1B69", "#5B21B6", Colors.cardPurple]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}
+      >
+        <View style={styles.headerShapeL} />
+        <View style={styles.headerShapeS} />
+
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Edit Staff</Text>
+            <Text style={styles.headerSub}>Update staff member details</Text>
+          </View>
+          {/* ID badge */}
+          <View style={styles.idBadge}>
+            <Text style={styles.idBadgeText}>#{id}</Text>
+          </View>
+        </View>
+
+        <View style={styles.rolePreviewRow}>
+          <View style={styles.rolePreviewPill}>
+            <Ionicons
+              name={selectedRole.icon as any}
+              size={13}
+              color={Colors.white}
+            />
+            <Text style={styles.rolePreviewText}>
+              Currently: {selectedRole.label}
             </Text>
           </View>
+        </View>
+      </LinearGradient>
 
-          {/* Form fields */}
-          <View style={styles.form}>
-            <Input
-              label="Username"
-              placeholder="e.g. Dr. Okello"
-              value={username}
-              onChangeText={setUsername}
-            />
-
-            <Input
-              label="Email"
-              placeholder="e.g. okello@gulu.ac.ug"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-
-            <Input
-              label="New Password"
-              placeholder="Leave blank to keep current"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-
-            {/* Role selector */}
-            <Text style={styles.roleLabel}>Role</Text>
-            <View style={styles.roleRow}>
-              <TouchableOpacity
-                style={[
-                  styles.roleBtn,
-                  role === "lecturer" && styles.roleBtnActive,
-                ]}
-                onPress={() => setRole("lecturer")}
-              >
-                <Text
-                  style={[
-                    styles.roleBtnText,
-                    role === "lecturer" && styles.roleBtnTextActive,
-                  ]}
-                >
-                  Lecturer
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.roleBtn,
-                  role === "admin" && styles.roleBtnActive,
-                ]}
-                onPress={() => setRole("admin")}
-              >
-                <Text
-                  style={[
-                    styles.roleBtnText,
-                    role === "admin" && styles.roleBtnTextActive,
-                  ]}
-                >
-                  Admin
-                </Text>
-              </TouchableOpacity>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Personal info ── */}
+        <Text style={styles.sectionLabel}>Personal Information</Text>
+        <View style={styles.formCard}>
+          <View style={styles.fieldRow}>
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.primaryLight },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={Colors.primary}
+              />
             </View>
-
-            <Button title="Update Staff" onPress={handleSubmit} />
+            <View style={styles.fieldInput}>
+              <Input
+                label="Username"
+                placeholder="e.g. Dr. Okello"
+                value={username}
+                onChangeText={(t) => {
+                  setUsername(t);
+                  setErrors((p) => ({ ...p, username: "" }));
+                }}
+                icon="person-outline"
+                error={errors.username}
+              />
+            </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+
+          <View style={styles.fieldDivider} />
+
+          <View style={styles.fieldRow}>
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.accentLight },
+              ]}
+            >
+              <Ionicons name="mail-outline" size={18} color={Colors.accent} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Email Address"
+                placeholder="e.g. okello@gulu.ac.ug"
+                value={email}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  setErrors((p) => ({ ...p, email: "" }));
+                }}
+                keyboardType="email-address"
+                icon="mail-outline"
+                error={errors.email}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ── Password section ── */}
+        <Text style={styles.sectionLabel}>Change Password</Text>
+        <View style={styles.formCard}>
+          <View style={styles.fieldRow}>
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.warningLight },
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color={Colors.warning}
+              />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="New Password"
+                placeholder="Leave blank to keep current"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                icon="lock-closed-outline"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ── Role section ── */}
+        <Text style={styles.sectionLabel}>Account Role</Text>
+        <View style={styles.formCard}>
+          <Text style={styles.roleHint}>
+            Change the access level for this staff member
+          </Text>
+          <View style={styles.roleRow}>
+            {ROLES.map((r) => {
+              const isActive = role === r.id;
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  style={[
+                    styles.roleBtn,
+                    isActive && { borderColor: r.color, backgroundColor: r.bg },
+                  ]}
+                  onPress={() => setRole(r.id)}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.roleBtnIcon,
+                      { backgroundColor: isActive ? r.color : Colors.border },
+                    ]}
+                  >
+                    <Ionicons
+                      name={r.icon as any}
+                      size={16}
+                      color={Colors.white}
+                    />
+                  </View>
+                  <Text
+                    style={[styles.roleBtnText, isActive && { color: r.color }]}
+                  >
+                    {r.label}
+                  </Text>
+                  {isActive && (
+                    <View
+                      style={[styles.roleCheck, { backgroundColor: r.color }]}
+                    >
+                      <Ionicons
+                        name="checkmark"
+                        size={10}
+                        color={Colors.white}
+                      />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.infoNote}>
+          <Ionicons name="create-outline" size={15} color={Colors.warning} />
+          <Text style={[styles.infoNoteText, { color: Colors.warning }]}>
+            Changes will take effect immediately after saving.
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* ── Sticky bottom bar ── */}
+      <View
+        style={[
+          styles.bottomBar,
+          { paddingBottom: insets.bottom + Spacing.md },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.cancelBtnText}>Cancel</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={["#5B21B6", Colors.cardPurple]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.submitGradient}
+          >
+            {loading ? (
+              <Text style={styles.submitBtnText}>Saving...</Text>
+            ) : (
+              <>
+                <Ionicons name="save-outline" size={18} color={Colors.white} />
+                <Text style={styles.submitBtnText}>Save Changes</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  root: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    overflow: "hidden",
   },
-  content: {
-    padding: Spacing.lg,
+  headerShapeL: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: -60,
+    right: -40,
   },
-  titleContainer: {
-    marginBottom: Spacing.lg,
+  headerShapeS: {
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    bottom: -20,
+    left: -20,
   },
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: "bold",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  subtitle: {
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerText: { flex: 1 },
+  headerTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  headerSub: {
+    fontSize: FontSize.sm,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
+  idBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  idBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  rolePreviewRow: { flexDirection: "row" },
+  rolePreviewPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 5,
+    gap: 5,
+  },
+  rolePreviewText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
+  },
+  body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
+  sectionLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.subtext,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  formCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    ...Shadows.sm,
+    marginBottom: Spacing.sm,
+  },
+  fieldRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    gap: Spacing.md,
+  },
+  fieldIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: Spacing.lg + 2,
+  },
+  fieldInput: { flex: 1 },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: Spacing.md + 38 + Spacing.md,
+  },
+  roleHint: {
     fontSize: FontSize.sm,
     color: Colors.subtext,
-  },
-  form: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  roleLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   roleRow: {
     flexDirection: "row",
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+    padding: Spacing.md,
+    paddingTop: 0,
   },
   roleBtn: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1.5,
     borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm + 2,
-    alignItems: "center",
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
     backgroundColor: Colors.background,
+    gap: Spacing.sm,
+    position: "relative",
   },
-  roleBtnActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  roleBtnIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
   },
   roleBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+    flex: 1,
+  },
+  roleCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  infoNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    backgroundColor: Colors.warningLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.warning + "30",
+  },
+  infoNoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
+  bottomBar: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+    ...Shadows.md,
+  },
+  cancelBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelBtnText: {
     fontSize: FontSize.md,
-    fontWeight: "600",
+    fontWeight: FontWeight.semibold,
     color: Colors.subtext,
   },
-  roleBtnTextActive: {
+  submitBtn: {
+    flex: 2,
+    borderRadius: Radius.lg,
+    overflow: "hidden",
+    ...Shadows.colored,
+  },
+  submitBtnDisabled: { opacity: 0.7 },
+  submitGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  submitBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
     color: Colors.white,
   },
 });
