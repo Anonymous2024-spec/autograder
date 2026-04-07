@@ -81,8 +81,7 @@ export default function StudentsScreen() {
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.reg_no.toLowerCase().includes(search.toLowerCase()) ||
       s.no.includes(search);
-    const matchFilter =
-      activeFilter === "All" || s.course === activeFilter;
+    const matchFilter = activeFilter === "All" || s.course === activeFilter;
     return matchSearch && matchFilter;
   });
 
@@ -116,13 +115,12 @@ export default function StudentsScreen() {
           style: "destructive",
           onPress: () => console.log("Delete student:", id),
         },
-      ]
+      ],
     );
   };
 
   return (
     <View style={styles.root}>
-
       {/* ── Gradient header ── */}
       <LinearGradient
         colors={["#0D1F6B", "#1A3BAA", Colors.primary]}
@@ -135,7 +133,13 @@ export default function StudentsScreen() {
 
         {/* Title row */}
         <View style={styles.headerTop}>
-          <View>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Students</Text>
             <Text style={styles.headerSub}>
               {STUDENTS.length} registered students
@@ -172,7 +176,6 @@ export default function StudentsScreen() {
             </TouchableOpacity>
           )}
         </View>
-
       </LinearGradient>
 
       {/* ── Filter chips ── */}
@@ -201,8 +204,7 @@ export default function StudentsScreen() {
       {/* ── Results count ── */}
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>
-          Showing{" "}
-          <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
+          Showing <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
           {filtered.length === 1 ? "student" : "students"}
         </Text>
       </View>
@@ -232,7 +234,6 @@ export default function StudentsScreen() {
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
-
             {/* Left — avatar with course color */}
             <LinearGradient
               colors={[item.courseColor, item.courseColor + "CC"]}
@@ -271,10 +272,7 @@ export default function StudentsScreen() {
                 ]}
               >
                 <Text
-                  style={[
-                    styles.courseBadgeText,
-                    { color: item.courseColor },
-                  ]}
+                  style={[styles.courseBadgeText, { color: item.courseColor }]}
                 >
                   {item.course}
                 </Text>
@@ -290,11 +288,9 @@ export default function StudentsScreen() {
                 />
               </TouchableOpacity>
             </View>
-
           </View>
         )}
       />
-
     </View>
   );
 }
@@ -331,10 +327,11 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: Spacing.md,
     marginBottom: Spacing.md,
   },
+  headerText: { flex: 1 },
   headerTitle: {
     fontSize: FontSize.xxl,
     fontWeight: FontWeight.bold,
@@ -504,5 +501,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.subtext,
     textAlign: "center",
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

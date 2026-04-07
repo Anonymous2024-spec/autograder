@@ -13,8 +13,9 @@ export default function LecturerLayout() {
       />
       <Stack.Screen
         name="questions/create"
-        options={{ headerShown: true, title: "Add Question" }}
+        options={{ headerShown: false}}
       />
+      
       <Stack.Screen
         name="questions/edit"
         options={{ headerShown: true, title: "Edit Question" }}

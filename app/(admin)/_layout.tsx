@@ -33,6 +33,7 @@ export default function AdminLayout() {
         name="questions"
         options={{ headerShown: true, title: "Questions" }}
       />
+      <Stack.Screen name="questions/create" options={{ headerShown: false }} />
     </Stack>
   );
 }

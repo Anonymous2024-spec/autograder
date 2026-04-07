@@ -53,7 +53,7 @@ export default function CoursesScreen() {
   const filtered = COURSES.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase())
+      c.code.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleOptions = (course: { id: number; name: string }) => {
@@ -88,7 +88,6 @@ export default function CoursesScreen() {
 
   return (
     <View style={styles.root}>
-
       {/* ── Header ── */}
       <LinearGradient
         colors={["#064E3B", "#059669", Colors.cardGreen]}
@@ -100,7 +99,13 @@ export default function CoursesScreen() {
         <View style={styles.headerShapeS} />
 
         <View style={styles.headerTop}>
-          <View>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Courses</Text>
             <Text style={styles.headerSub}>
               {COURSES.length} registered courses
@@ -127,7 +132,11 @@ export default function CoursesScreen() {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color={Colors.placeholder} />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={Colors.placeholder}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -148,8 +157,17 @@ export default function CoursesScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIconBox, { backgroundColor: Colors.successLight }]}>
-              <Ionicons name="book-outline" size={40} color={Colors.cardGreen} />
+            <View
+              style={[
+                styles.emptyIconBox,
+                { backgroundColor: Colors.successLight },
+              ]}
+            >
+              <Ionicons
+                name="book-outline"
+                size={40}
+                color={Colors.cardGreen}
+              />
             </View>
             <Text style={styles.emptyTitle}>No Courses Found</Text>
             <Text style={styles.emptyText}>
@@ -167,7 +185,9 @@ export default function CoursesScreen() {
             <View style={[styles.colorBar, { backgroundColor: item.color }]} />
 
             {/* Icon */}
-            <View style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}>
+            <View
+              style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}
+            >
               <Ionicons name="book" size={22} color={item.color} />
             </View>
 
@@ -177,7 +197,12 @@ export default function CoursesScreen() {
                 {item.name}
               </Text>
               <View style={styles.cardBottom}>
-                <View style={[styles.codeBadge, { backgroundColor: item.color + "18" }]}>
+                <View
+                  style={[
+                    styles.codeBadge,
+                    { backgroundColor: item.color + "18" },
+                  ]}
+                >
                   <Text style={[styles.codeBadgeText, { color: item.color }]}>
                     {item.code}
                   </Text>
@@ -209,7 +234,6 @@ export default function CoursesScreen() {
           </TouchableOpacity>
         )}
       />
-
     </View>
   );
 }
@@ -241,10 +265,11 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: Spacing.md,
     marginBottom: Spacing.md,
   },
+  headerText: { flex: 1 },
   headerTitle: {
     fontSize: FontSize.xxl,
     fontWeight: FontWeight.bold,
@@ -371,5 +396,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.subtext,
     textAlign: "center",
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

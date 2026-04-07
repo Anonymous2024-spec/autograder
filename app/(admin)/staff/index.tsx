@@ -57,8 +57,7 @@ export default function StaffScreen() {
     const matchSearch =
       s.username.toLowerCase().includes(search.toLowerCase()) ||
       s.email.toLowerCase().includes(search.toLowerCase());
-    const matchFilter =
-      activeFilter === "All" || s.role === activeFilter;
+    const matchFilter = activeFilter === "All" || s.role === activeFilter;
     return matchSearch && matchFilter;
   });
 
@@ -94,7 +93,6 @@ export default function StaffScreen() {
 
   return (
     <View style={styles.root}>
-
       {/* ── Header ── */}
       <LinearGradient
         colors={["#2D1B69", "#5B21B6", Colors.cardPurple]}
@@ -106,7 +104,13 @@ export default function StaffScreen() {
         <View style={styles.headerShapeS} />
 
         <View style={styles.headerTop}>
-          <View>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Staff & Users</Text>
             <Text style={styles.headerSub}>
               {STAFF.length} registered members
@@ -114,9 +118,7 @@ export default function StaffScreen() {
           </View>
           <TouchableOpacity
             style={styles.addBtn}
-            onPress={() =>
-              router.push({ pathname: "/(admin)/staff/register" })
-            }
+            onPress={() => router.push({ pathname: "/(admin)/staff/register" })}
           >
             <Ionicons name="add" size={22} color={Colors.white} />
           </TouchableOpacity>
@@ -133,7 +135,11 @@ export default function StaffScreen() {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color={Colors.placeholder} />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={Colors.placeholder}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -178,7 +184,11 @@ export default function StaffScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={[styles.emptyIconBox, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons name="person-outline" size={40} color={Colors.cardPurple} />
+              <Ionicons
+                name="person-outline"
+                size={40}
+                color={Colors.cardPurple}
+              />
             </View>
             <Text style={styles.emptyTitle}>No Staff Found</Text>
             <Text style={styles.emptyText}>
@@ -198,7 +208,11 @@ export default function StaffScreen() {
             <View style={styles.cardInfo}>
               <Text style={styles.cardName}>{item.username}</Text>
               <View style={styles.cardMetaRow}>
-                <Ionicons name="mail-outline" size={12} color={Colors.subtext} />
+                <Ionicons
+                  name="mail-outline"
+                  size={12}
+                  color={Colors.subtext}
+                />
                 <Text style={styles.cardMeta}>{item.email}</Text>
               </View>
             </View>
@@ -272,10 +286,11 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: Spacing.md,
     marginBottom: Spacing.md,
   },
+  headerText: { flex: 1 },
   headerTitle: {
     fontSize: FontSize.xxl,
     fontWeight: FontWeight.bold,
@@ -285,6 +300,14 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   addBtn: {
     width: 42,
