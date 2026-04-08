@@ -6,16 +6,17 @@ export default function LecturerLayout() {
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
 
+      {/* courses */}
+      <Stack.Screen name="courses" options={{ headerShown: false }} />
+      <Stack.Screen name="courses/units" options={{ headerShown: false }} />
+
       {/* questions/index.tsx → name is "questions" not "questions/index" */}
       <Stack.Screen
         name="questions"
         options={{ headerShown: true, title: "Questions" }}
       />
-      <Stack.Screen
-        name="questions/create"
-        options={{ headerShown: false}}
-      />
-      
+      <Stack.Screen name="questions/create" options={{ headerShown: false }} />
+
       <Stack.Screen
         name="questions/edit"
         options={{ headerShown: true, title: "Edit Question" }}

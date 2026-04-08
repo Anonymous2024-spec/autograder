@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -21,84 +21,89 @@ import {
   Spacing,
 } from "../../../constants";
 
-const COURSES = [
+const COURSE_UNITS = [
   {
     id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    students: 42,
+    name: "Introduction to Programming",
+    code: "PROG101",
+    questions: 12,
     color: Colors.cardBlue,
+    courseId: 1,
   },
   {
     id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    students: 38,
+    name: "Web Development Basics",
+    code: "WEB101",
+    questions: 8,
     color: Colors.cardTeal,
+    courseId: 1,
   },
   {
     id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
-    students: 44,
+    name: "Database Management",
+    code: "DB101",
+    questions: 15,
     color: Colors.cardGreen,
+    courseId: 1,
+  },
+  {
+    id: 4,
+    name: "Networking Fundamentals",
+    code: "NET101",
+    questions: 10,
+    color: Colors.cardPurple,
+    courseId: 1,
+  },
+  {
+    id: 5,
+    name: "Cybersecurity Basics",
+    code: "SEC101",
+    questions: 7,
+    color: Colors.cardBlue,
+    courseId: 1,
   },
 ];
 
-export default function CoursesScreen() {
+export default function CourseUnitsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { courseId, courseName, courseCode } = useLocalSearchParams();
   const [search, setSearch] = useState("");
 
-  const filtered = COURSES.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase()),
+  const units = COURSE_UNITS.filter(
+    (u) => u.courseId === parseInt(courseId as string),
   );
 
-  const handleOptions = (course: {
+  const filtered = units.filter(
+    (u) =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.code.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const handleViewQuestions = (unit: {
     id: number;
     name: string;
     code: string;
   }) => {
-    Alert.alert(course.name, "What would you like to do?", [
+    Alert.alert("View Questions", `Questions for ${unit.code} - ${unit.name}`, [
       {
-        text: "Manage Units",
-        onPress: () =>
-          router.push({
-            pathname: "/(admin)/courses/units",
-            params: {
-              courseId: course.id,
-              courseName: course.name,
-              courseCode: course.code,
-            },
-          }),
-      },
-      {
-        text: "Edit",
-        onPress: () =>
-          router.push({
-            pathname: "/(admin)/courses/edit",
-            params: { id: course.id },
-          }),
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => confirmDelete(course.id),
+        text: "View",
+        onPress: () => {
+          // TODO: Navigate to questions filtered by this unit
+          Alert.alert("Success", "Navigate to questions for this unit");
+        },
       },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
-  const confirmDelete = (id: number) => {
-    Alert.alert("Delete Course", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
+  const handleOptions = (unit: { id: number; name: string }) => {
+    Alert.alert(unit.name, "What would you like to do?", [
       {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => console.log("Delete course:", id),
+        text: "View Questions",
+        onPress: () => handleViewQuestions(unit as any),
       },
+      { text: "Cancel", style: "cancel" },
     ]);
   };
 
@@ -106,7 +111,7 @@ export default function CoursesScreen() {
     <View style={styles.root}>
       {/* ── Header ── */}
       <LinearGradient
-        colors={["#064E3B", "#059669", Colors.cardGreen]}
+        colors={["#1A3BAA", "#1A56DB", "#0EA5E9"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + Spacing.md }]}
@@ -122,26 +127,18 @@ export default function CoursesScreen() {
             <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Courses</Text>
-            <Text style={styles.headerSub}>
-              {COURSES.length} registered courses
+            <Text style={styles.headerTitle}>Course Units</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              {courseName}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() =>
-              router.push({ pathname: "/(admin)/courses/register" })
-            }
-          >
-            <Ionicons name="add" size={22} color={Colors.white} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.subtext} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search course name or code..."
+            placeholder="Search unit name or code..."
             placeholderTextColor={Colors.placeholder}
             value={search}
             onChangeText={setSearch}
@@ -161,7 +158,7 @@ export default function CoursesScreen() {
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>
           Showing <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
-          {filtered.length === 1 ? "course" : "courses"}
+          {filtered.length === 1 ? "unit" : "units"}
         </Text>
       </View>
 
@@ -176,25 +173,25 @@ export default function CoursesScreen() {
             <View
               style={[
                 styles.emptyIconBox,
-                { backgroundColor: Colors.successLight },
+                { backgroundColor: Colors.primaryLight },
               ]}
             >
               <Ionicons
-                name="book-outline"
+                name="layers-outline"
                 size={40}
-                color={Colors.cardGreen}
+                color={Colors.primary}
               />
             </View>
-            <Text style={styles.emptyTitle}>No Courses Found</Text>
+            <Text style={styles.emptyTitle}>No Units Found</Text>
             <Text style={styles.emptyText}>
-              {search ? "Try a different search" : "Tap + to add a course"}
+              {search ? "Try a different search" : "No course units available"}
             </Text>
           </View>
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => handleOptions(item)}
+            onPress={() => handleViewQuestions(item)}
             activeOpacity={0.85}
           >
             {/* Color bar on left */}
@@ -204,7 +201,7 @@ export default function CoursesScreen() {
             <View
               style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}
             >
-              <Ionicons name="book" size={22} color={item.color} />
+              <Ionicons name="layers" size={22} color={item.color} />
             </View>
 
             {/* Info */}
@@ -223,14 +220,14 @@ export default function CoursesScreen() {
                     {item.code}
                   </Text>
                 </View>
-                <View style={styles.studentCount}>
+                <View style={styles.questionCount}>
                   <Ionicons
-                    name="people-outline"
+                    name="help-circle-outline"
                     size={12}
                     color={Colors.subtext}
                   />
-                  <Text style={styles.studentCountText}>
-                    {item.students} students
+                  <Text style={styles.questionCountText}>
+                    {item.questions} questions
                   </Text>
                 </View>
               </View>
@@ -296,13 +293,11 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
   },
-  addBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -327,7 +322,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   resultsText: { fontSize: FontSize.sm, color: Colors.subtext },
-  resultsCount: { fontWeight: FontWeight.bold, color: Colors.cardGreen },
+  resultsCount: { fontWeight: FontWeight.bold, color: Colors.primary },
   list: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl * 2,
@@ -380,12 +375,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
   },
-  studentCount: {
+  questionCount: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
   },
-  studentCountText: {
+  questionCountText: {
     fontSize: FontSize.xs,
     color: Colors.subtext,
   },
@@ -412,13 +407,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.subtext,
     textAlign: "center",
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
   },
 });
