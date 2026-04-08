@@ -85,23 +85,17 @@ export default function CourseUnitsScreen() {
     name: string;
     code: string;
   }) => {
-    Alert.alert("View Questions", `Questions for ${unit.code} - ${unit.name}`, [
-      {
-        text: "View",
-        onPress: () => {
-          // TODO: Navigate to questions filtered by this unit
-          Alert.alert("Success", "Navigate to questions for this unit");
-        },
-      },
-      { text: "Cancel", style: "cancel" },
-    ]);
+    router.push({
+      pathname: "/(lecturer)/questions",
+      params: { unitId: unit.id, unitName: unit.name, unitCode: unit.code },
+    });
   };
 
-  const handleOptions = (unit: { id: number; name: string }) => {
+  const handleOptions = (unit: { id: number; name: string; code: string }) => {
     Alert.alert(unit.name, "What would you like to do?", [
       {
         text: "View Questions",
-        onPress: () => handleViewQuestions(unit as any),
+        onPress: () => handleViewQuestions(unit),
       },
       { text: "Cancel", style: "cancel" },
     ]);
@@ -132,6 +126,17 @@ export default function CourseUnitsScreen() {
               {courseName}
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(lecturer)/courses/units/create",
+                params: { courseId },
+              })
+            }
+          >
+            <Ionicons name="add" size={22} color={Colors.white} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchBar}>
@@ -298,6 +303,16 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
     justifyContent: "center",
     alignItems: "center",
   },

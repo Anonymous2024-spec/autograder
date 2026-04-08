@@ -9,18 +9,16 @@ export default function LecturerLayout() {
       {/* courses */}
       <Stack.Screen name="courses" options={{ headerShown: false }} />
       <Stack.Screen name="courses/units" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="courses/units/create"
+        options={{ headerShown: false }}
+      />
 
       {/* questions/index.tsx → name is "questions" not "questions/index" */}
-      <Stack.Screen
-        name="questions"
-        options={{ headerShown: true, title: "Questions" }}
-      />
+      <Stack.Screen name="questions" options={{ headerShown: false }} />
       <Stack.Screen name="questions/create" options={{ headerShown: false }} />
 
-      <Stack.Screen
-        name="questions/edit"
-        options={{ headerShown: true, title: "Edit Question" }}
-      />
+      <Stack.Screen name="questions/edit" options={{ headerShown: false }} />
 
       {/* grading/index.tsx → name is "grading" not "grading/index" */}
       <Stack.Screen

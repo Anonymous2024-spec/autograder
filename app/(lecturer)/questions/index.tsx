@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -20,52 +20,80 @@ import {
   Spacing,
 } from "../../../constants";
 
-const COURSES = [
+const COURSE_UNITS = [
   {
     id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
+    name: "Introduction to Programming",
+    code: "PROG101",
     color: Colors.cardBlue,
   },
   {
     id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
+    name: "Web Development Basics",
+    code: "WEB101",
     color: Colors.cardTeal,
   },
   {
     id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
+    name: "Database Management",
+    code: "DB101",
     color: Colors.cardGreen,
+  },
+  {
+    id: 4,
+    name: "Networking Fundamentals",
+    code: "NET101",
+    color: Colors.cardPurple,
+  },
+  {
+    id: 5,
+    name: "Cybersecurity Basics",
+    code: "SEC101",
+    color: Colors.cardBlue,
   },
 ];
 
 const ALL_QUESTIONS = [
-  { id: 1, question: "What is the full meaning of CPU?", course_id: 1 },
-  { id: 2, question: "Which data structure uses FIFO order?", course_id: 1 },
-  { id: 3, question: "What does RAM stand for?", course_id: 1 },
-  { id: 4, question: "What does CSS stand for?", course_id: 2 },
-  { id: 5, question: "Which language runs in a web browser?", course_id: 2 },
-  { id: 6, question: "What is an algorithm?", course_id: 3 },
+  { id: 1, question: "What is the full meaning of CPU?", unit_id: 1 },
+  { id: 2, question: "Which data structure uses FIFO order?", unit_id: 1 },
+  { id: 3, question: "What does RAM stand for?", unit_id: 1 },
+  { id: 4, question: "What does CSS stand for?", unit_id: 2 },
+  { id: 5, question: "Which language runs in a web browser?", unit_id: 2 },
+  { id: 6, question: "What is an algorithm?", unit_id: 3 },
+  { id: 7, question: "What is a database schema?", unit_id: 3 },
+  { id: 8, question: "Define TCP/IP", unit_id: 4 },
+  { id: 9, question: "What is encryption?", unit_id: 5 },
 ];
 
 export default function QuestionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { unitId, unitName, unitCode } = useLocalSearchParams();
 
-  const [selectedCourse, setSelectedCourse] = useState<
-    (typeof COURSES)[0] | null
+  const [selectedUnit, setSelectedUnit] = useState<
+    (typeof COURSE_UNITS)[0] | null
   >(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const questions = selectedCourse
-    ? ALL_QUESTIONS.filter((q) => q.course_id === selectedCourse.id)
+  // Auto-select unit if passed via route params
+  useEffect(() => {
+    if (unitId) {
+      const unit = COURSE_UNITS.find(
+        (u) => u.id === parseInt(unitId as string),
+      );
+      if (unit) {
+        setSelectedUnit(unit);
+      }
+    }
+  }, [unitId]);
+
+  const questions = selectedUnit
+    ? ALL_QUESTIONS.filter((q) => q.unit_id === selectedUnit.id)
     : [];
 
   const handleGenerateSheet = () => {
-    if (!selectedCourse) {
-      Alert.alert("No Course", "Please select a course first.");
+    if (!selectedUnit) {
+      Alert.alert("No Unit", "Please select a unit first.");
       return;
     }
     if (questions.length === 0) {
@@ -75,9 +103,9 @@ export default function QuestionsScreen() {
     router.push({
       pathname: "/(lecturer)/questions/sheet",
       params: {
-        courseId: selectedCourse.id,
-        courseName: selectedCourse.name,
-        courseCode: selectedCourse.code,
+        unitId: selectedUnit.id,
+        unitName: selectedUnit.name,
+        unitCode: selectedUnit.code,
       },
     });
   };
@@ -132,7 +160,7 @@ export default function QuestionsScreen() {
             <Text style={styles.headerTitle}>Questions</Text>
             <Text style={styles.headerSub}>Manage MCQ question bank</Text>
           </View>
-          {selectedCourse && (
+          {selectedUnit && (
             <TouchableOpacity
               style={styles.addBtn}
               onPress={() =>
@@ -144,84 +172,84 @@ export default function QuestionsScreen() {
           )}
         </View>
 
-        {/* Course picker trigger */}
+        {/* Unit picker trigger */}
         <TouchableOpacity
           style={styles.pickerTrigger}
           onPress={() => setPickerOpen(!pickerOpen)}
           activeOpacity={0.85}
         >
-          {selectedCourse ? (
+          {selectedUnit ? (
             <View
               style={[
                 styles.pickerCourseIcon,
-                { backgroundColor: selectedCourse.color + "25" },
+                { backgroundColor: selectedUnit.color + "25" },
               ]}
             >
-              <Ionicons name="book" size={16} color={Colors.white} />
+              <Ionicons name="layers" size={16} color={Colors.white} />
             </View>
           ) : (
-            <Ionicons name="book-outline" size={18} color={Colors.subtext} />
+            <Ionicons name="layers-outline" size={18} color={Colors.subtext} />
           )}
           <Text
             style={[
               styles.pickerTriggerText,
-              !selectedCourse && styles.pickerPlaceholder,
+              !selectedUnit && styles.pickerPlaceholder,
             ]}
           >
-            {selectedCourse
-              ? selectedCourse.name
-              : "Select a course to view questions..."}
+            {selectedUnit
+              ? selectedUnit.name
+              : "Select a unit to view questions..."}
           </Text>
           <Ionicons
             name={pickerOpen ? "chevron-up" : "chevron-down"}
             size={18}
-            color={selectedCourse ? Colors.white : Colors.subtext}
+            color={selectedUnit ? Colors.white : Colors.subtext}
           />
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ── Course dropdown ── */}
+      {/* ── Unit dropdown ── */}
       {pickerOpen && (
         <View style={styles.dropdown}>
-          {COURSES.map((course) => (
+          {COURSE_UNITS.map((unit) => (
             <TouchableOpacity
-              key={course.id}
+              key={unit.id}
               style={[
                 styles.dropdownItem,
-                selectedCourse?.id === course.id && styles.dropdownItemActive,
+                selectedUnit?.id === unit.id && styles.dropdownItemActive,
               ]}
               onPress={() => {
-                setSelectedCourse(course);
+                setSelectedUnit(unit);
                 setPickerOpen(false);
               }}
             >
               <View
-                style={[styles.dropdownBar, { backgroundColor: course.color }]}
+                style={[styles.dropdownBar, { backgroundColor: unit.color }]}
               />
               <View
                 style={[
                   styles.dropdownIcon,
-                  { backgroundColor: course.color + "18" },
+                  { backgroundColor: unit.color + "18" },
                 ]}
               >
-                <Ionicons name="book" size={16} color={course.color} />
+                <Ionicons name="layers" size={16} color={unit.color} />
               </View>
               <View style={styles.dropdownInfo}>
                 <Text style={styles.dropdownName} numberOfLines={1}>
-                  {course.name}
+                  {unit.name}
                 </Text>
                 <View
                   style={[
                     styles.codeBadge,
-                    { backgroundColor: course.color + "18" },
+                    { backgroundColor: unit.color + "18" },
                   ]}
                 >
-                  <Text style={[styles.codeBadgeText, { color: course.color }]}>
-                    {course.code}
+                  <Text style={[styles.codeBadgeText, { color: unit.color }]}>
+                    {unit.code}
                   </Text>
                 </View>
               </View>
-              {selectedCourse?.id === course.id && (
+              {selectedUnit?.id === unit.id && (
                 <Ionicons
                   name="checkmark-circle"
                   size={20}
@@ -234,7 +262,7 @@ export default function QuestionsScreen() {
       )}
 
       {/* ── Generate sheet banner ── */}
-      {selectedCourse && questions.length > 0 && (
+      {selectedUnit && questions.length > 0 && (
         <TouchableOpacity
           style={styles.generateBanner}
           onPress={handleGenerateSheet}
@@ -251,7 +279,7 @@ export default function QuestionsScreen() {
             <View style={styles.generateInfo}>
               <Text style={styles.generateTitle}>Generate Answer Sheet</Text>
               <Text style={styles.generateSub}>
-                {questions.length} question(s) for {selectedCourse.code}
+                {questions.length} question(s) for {selectedUnit.code}
               </Text>
             </View>
             <View style={styles.generateArrow}>
@@ -262,7 +290,7 @@ export default function QuestionsScreen() {
       )}
 
       {/* ── Questions list or empty states ── */}
-      {selectedCourse ? (
+      {selectedUnit ? (
         <FlatList
           data={questions}
           keyExtractor={(item) => item.id.toString()}
@@ -279,7 +307,7 @@ export default function QuestionsScreen() {
                     styles.courseTag,
                     {
                       backgroundColor:
-                        (COURSES.find((c) => c.id === selectedCourse.id)
+                        (COURSE_UNITS.find((u) => u.id === selectedUnit.id)
                           ?.color ?? Colors.primary) + "18",
                     },
                   ]}
@@ -289,12 +317,12 @@ export default function QuestionsScreen() {
                       styles.courseTagText,
                       {
                         color:
-                          COURSES.find((c) => c.id === selectedCourse.id)
+                          COURSE_UNITS.find((u) => u.id === selectedUnit.id)
                             ?.color ?? Colors.primary,
                       },
                     ]}
                   >
-                    {selectedCourse.code}
+                    {selectedUnit.code}
                   </Text>
                 </View>
               </View>
@@ -311,7 +339,7 @@ export default function QuestionsScreen() {
               </View>
               <Text style={styles.emptyTitle}>No Questions Yet</Text>
               <Text style={styles.emptyText}>
-                Tap + to add your first question for {selectedCourse.code}
+                Tap + to add your first question for {selectedUnit.code}
               </Text>
             </View>
           }
@@ -339,11 +367,11 @@ export default function QuestionsScreen() {
       ) : (
         <View style={styles.noCourseContainer}>
           <View style={styles.noCourseIconBox}>
-            <Ionicons name="book-outline" size={40} color={Colors.primary} />
+            <Ionicons name="layers-outline" size={40} color={Colors.primary} />
           </View>
-          <Text style={styles.noCourseTitle}>No Course Selected</Text>
+          <Text style={styles.noCourseTitle}>No Unit Selected</Text>
           <Text style={styles.noCourseText}>
-            Tap the course picker above to view and manage questions
+            Tap the unit picker above to view and manage questions
           </Text>
         </View>
       )}

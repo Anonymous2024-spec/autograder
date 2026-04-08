@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAuth } from "../../context/AuthContext";
 import {
   Colors,
   FontSize,
@@ -20,11 +19,23 @@ import {
   Shadows,
   Spacing,
 } from "../../constants";
+import { useAuth } from "../../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
 // Main action cards
 const ACTIONS = [
+  {
+    id: "courses",
+    title: "My Courses",
+    subtitle: "View & manage course units",
+    icon: "book",
+    route: "/(lecturer)/courses",
+    gradient: ["#0D7377", "#14919B"] as [string, string],
+    stat: "8",
+    statLabel: "courses assigned",
+    tag: "Courses",
+  },
   {
     id: "questions",
     title: "Questions",
@@ -91,7 +102,9 @@ export default function LecturerDashboard() {
       {
         text: "Logout",
         style: "destructive",
-        onPress: async () => { await logout(); },
+        onPress: async () => {
+          await logout();
+        },
       },
     ]);
   };
@@ -106,7 +119,6 @@ export default function LecturerDashboard() {
 
   return (
     <View style={styles.root}>
-
       {/* ── Gradient header ── */}
       <LinearGradient
         colors={["#062B6E", "#1044B2", "#1A56DB"]}
@@ -153,9 +165,7 @@ export default function LecturerDashboard() {
         {/* Greeting */}
         <View style={styles.greetingSection}>
           <Text style={styles.greetingLine}>Good day 👋</Text>
-          <Text style={styles.greetingBig}>
-            {user?.username ?? "Lecturer"}
-          </Text>
+          <Text style={styles.greetingBig}>{user?.username ?? "Lecturer"}</Text>
           <View style={styles.rolePill}>
             <View style={styles.roleDot} />
             <Text style={styles.rolePillText}>Lecturer · Active</Text>
@@ -184,7 +194,6 @@ export default function LecturerDashboard() {
             <Text style={styles.statLbl}>Pending</Text>
           </View>
         </View>
-
       </LinearGradient>
 
       {/* ── Body ── */}
@@ -195,7 +204,6 @@ export default function LecturerDashboard() {
           { paddingBottom: insets.bottom + Spacing.xl },
         ]}
       >
-
         {/* ── Main action cards ── */}
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -234,7 +242,8 @@ export default function LecturerDashboard() {
                 <View style={styles.actionStatRow}>
                   <Text style={styles.actionStat}>{action.stat}</Text>
                   <Text style={styles.actionStatLabel}>
-                    {" "}{action.statLabel}
+                    {" "}
+                    {action.statLabel}
                   </Text>
                 </View>
               </View>
@@ -256,7 +265,6 @@ export default function LecturerDashboard() {
                   />
                 </View>
               </View>
-
             </LinearGradient>
           </TouchableOpacity>
         ))}
@@ -402,7 +410,6 @@ export default function LecturerDashboard() {
             AutoGrader v1.0.0 · Gulu University © 2025
           </Text>
         </View>
-
       </ScrollView>
     </View>
   );
