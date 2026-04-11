@@ -23,19 +23,19 @@ export default function LecturerLayout() {
       {/* grading/index.tsx → name is "grading" not "grading/index" */}
       <Stack.Screen
         name="grading"
-        options={{ headerShown: true, title: "Grade Student" }}
+        options={{ headerShown: false, title: "Grade Student" }}
       />
       <Stack.Screen
         name="grading/scan"
-        options={{ headerShown: true, title: "Scan Answer Sheet" }}
+        options={{ headerShown: false, title: "Scan Answer Sheet" }}
       />
       <Stack.Screen
         name="grading/result"
-        options={{ headerShown: true, title: "Grade Report" }}
+        options={{ headerShown: false, title: "Grade Report" }}
       />
       <Stack.Screen
         name="questions/sheet"
-        options={{ headerShown: true, title: "Answer Sheet" }}
+        options={{ headerShown: false, title: "Answer Sheet" }}
       />
     </Stack>
   );
