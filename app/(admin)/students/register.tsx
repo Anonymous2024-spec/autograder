@@ -3,7 +3,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,6 +24,28 @@ import {
   Spacing,
 } from "../../../constants";
 
+// Mock courses data
+const COURSES = [
+  {
+    id: 1,
+    name: "Bachelor of Information Technology",
+    code: "BICT",
+    color: Colors.cardBlue,
+  },
+  {
+    id: 2,
+    name: "Bachelor of Computer Science",
+    code: "BCS",
+    color: Colors.cardTeal,
+  },
+  {
+    id: 3,
+    name: "Bachelor of Software Engineering",
+    code: "BSE",
+    color: Colors.cardGreen,
+  },
+];
+
 export default function RegisterStudent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -30,19 +54,38 @@ export default function RegisterStudent() {
   const [regNo, setRegNo] = useState("");
   const [studentNo, setStudentNo] = useState("");
   const [courseId, setCourseId] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState<
+    (typeof COURSES)[0] | null
+  >(null);
+  const [showCoursePicker, setShowCoursePicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState({
-    name: "", regNo: "", studentNo: "", courseId: "",
+    name: "",
+    regNo: "",
+    studentNo: "",
+    courseId: "",
   });
 
   const validate = () => {
     const e = { name: "", regNo: "", studentNo: "", courseId: "" };
     let valid = true;
-    if (!name.trim()) { e.name = "Full name is required"; valid = false; }
-    if (!regNo.trim()) { e.regNo = "Registration number is required"; valid = false; }
-    if (!studentNo.trim()) { e.studentNo = "Student number is required"; valid = false; }
-    if (!courseId.trim()) { e.courseId = "Course ID is required"; valid = false; }
+    if (!name.trim()) {
+      e.name = "Full name is required";
+      valid = false;
+    }
+    if (!regNo.trim()) {
+      e.regNo = "Registration number is required";
+      valid = false;
+    }
+    if (!studentNo.trim()) {
+      e.studentNo = "Student number is required";
+      valid = false;
+    }
+    if (!selectedCourse) {
+      e.courseId = "Course is required";
+      valid = false;
+    }
     setErrors(e);
     return valid;
   };
@@ -73,7 +116,10 @@ export default function RegisterStudent() {
         <View style={styles.headerShapeS} />
 
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
             <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
           <View style={styles.headerText}>
@@ -85,7 +131,11 @@ export default function RegisterStudent() {
         {/* Progress hint */}
         <View style={styles.progressRow}>
           <View style={styles.progressPill}>
-            <Ionicons name="person-add-outline" size={13} color={Colors.white} />
+            <Ionicons
+              name="person-add-outline"
+              size={13}
+              color={Colors.white}
+            />
             <Text style={styles.progressText}>Fill all fields to register</Text>
           </View>
         </View>
@@ -103,15 +153,27 @@ export default function RegisterStudent() {
         <Text style={styles.sectionLabel}>Student Identity</Text>
         <View style={styles.formCard}>
           <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
-              <Ionicons name="person-outline" size={18} color={Colors.primary} />
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.primaryLight },
+              ]}
+            >
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color={Colors.primary}
+              />
             </View>
             <View style={styles.fieldInput}>
               <Input
                 label="Full Name"
                 placeholder="e.g. John Doe"
                 value={name}
-                onChangeText={(t) => { setName(t); setErrors((p) => ({ ...p, name: "" })); }}
+                onChangeText={(t) => {
+                  setName(t);
+                  setErrors((p) => ({ ...p, name: "" }));
+                }}
                 icon="person-outline"
                 error={errors.name}
               />
@@ -121,7 +183,12 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.accentLight },
+              ]}
+            >
               <Ionicons name="card-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
@@ -129,7 +196,10 @@ export default function RegisterStudent() {
                 label="Registration Number"
                 placeholder="e.g. 23/U/1234"
                 value={regNo}
-                onChangeText={(t) => { setRegNo(t); setErrors((p) => ({ ...p, regNo: "" })); }}
+                onChangeText={(t) => {
+                  setRegNo(t);
+                  setErrors((p) => ({ ...p, regNo: "" }));
+                }}
                 icon="card-outline"
                 error={errors.regNo}
               />
@@ -139,15 +209,27 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.successLight }]}>
-              <Ionicons name="id-card-outline" size={18} color={Colors.success} />
+            <View
+              style={[
+                styles.fieldIcon,
+                { backgroundColor: Colors.successLight },
+              ]}
+            >
+              <Ionicons
+                name="id-card-outline"
+                size={18}
+                color={Colors.success}
+              />
             </View>
             <View style={styles.fieldInput}>
               <Input
                 label="Student Number"
                 placeholder="e.g. 2300712345"
                 value={studentNo}
-                onChangeText={(t) => { setStudentNo(t); setErrors((p) => ({ ...p, studentNo: "" })); }}
+                onChangeText={(t) => {
+                  setStudentNo(t);
+                  setErrors((p) => ({ ...p, studentNo: "" }));
+                }}
                 keyboardType="numeric"
                 icon="id-card-outline"
                 error={errors.studentNo}
@@ -159,35 +241,140 @@ export default function RegisterStudent() {
         {/* ── Enrollment section ── */}
         <Text style={styles.sectionLabel}>Enrollment</Text>
         <View style={styles.formCard}>
-          <View style={styles.fieldRow}>
+          <TouchableOpacity
+            style={styles.fieldRow}
+            onPress={() => setShowCoursePicker(true)}
+            activeOpacity={0.7}
+          >
             <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons name="book-outline" size={18} color={Colors.cardPurple} />
-            </View>
-            <View style={styles.fieldInput}>
-              <Input
-                label="Course ID"
-                placeholder="e.g. 1"
-                value={courseId}
-                onChangeText={(t) => { setCourseId(t); setErrors((p) => ({ ...p, courseId: "" })); }}
-                keyboardType="numeric"
-                icon="book-outline"
-                error={errors.courseId}
+              <Ionicons
+                name="book-outline"
+                size={18}
+                color={Colors.cardPurple}
               />
             </View>
-          </View>
+            <View style={styles.fieldInput}>
+              <Text style={styles.pickLabel}>Course</Text>
+              <View style={styles.pickButton}>
+                {selectedCourse ? (
+                  <View>
+                    <Text style={styles.pickButtonText}>
+                      {selectedCourse.name}
+                    </Text>
+                    <Text style={styles.pickButtonSubtext}>
+                      {selectedCourse.code}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pickPlaceholder}>Select a course...</Text>
+                )}
+                <Ionicons
+                  name="chevron-down-outline"
+                  size={20}
+                  color={selectedCourse ? Colors.primary : Colors.placeholder}
+                />
+              </View>
+              {errors.courseId && (
+                <Text style={styles.errorText}>{errors.courseId}</Text>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* ── Info note ── */}
         <View style={styles.infoNote}>
-          <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
+          <Ionicons
+            name="information-circle-outline"
+            size={15}
+            color={Colors.primary}
+          />
           <Text style={styles.infoNoteText}>
-            The Course ID must match an existing course in the system. Ask the admin if unsure.
+            Select the course this student is enrolled in. This determines their
+            course units and assessment schedule.
           </Text>
         </View>
       </ScrollView>
 
+      {/* Course Picker Modal */}
+      <Modal
+        visible={showCoursePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCoursePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View
+              style={[
+                styles.modalHeader,
+                { paddingTop: insets.top + Spacing.md },
+              ]}
+            >
+              <Text style={styles.modalTitle}>Select Course</Text>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowCoursePicker(false)}
+              >
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={COURSES}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.courseList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.courseOption,
+                    selectedCourse?.id === item.id && styles.courseOptionActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedCourse(item);
+                    setCourseId(item.id.toString());
+                    setShowCoursePicker(false);
+                    setErrors((p) => ({ ...p, courseId: "" }));
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.courseOptionIcon,
+                      { backgroundColor: item.color + "20" },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.courseOptionCode, { color: item.color }]}
+                    >
+                      {item.code}
+                    </Text>
+                  </View>
+                  <View style={styles.courseOptionInfo}>
+                    <Text style={styles.courseOptionName}>{item.name}</Text>
+                    <Text style={styles.courseOptionSubtext}>
+                      ID: {item.id}
+                    </Text>
+                  </View>
+                  {selectedCourse?.id === item.id && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color={Colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Sticky bottom bar ── */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+      <View
+        style={[
+          styles.bottomBar,
+          { paddingBottom: insets.bottom + Spacing.md },
+        ]}
+      >
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={() => router.back()}
@@ -212,7 +399,11 @@ export default function RegisterStudent() {
               <Text style={styles.submitBtnText}>Registering...</Text>
             ) : (
               <>
-                <Ionicons name="person-add-outline" size={18} color={Colors.white} />
+                <Ionicons
+                  name="person-add-outline"
+                  size={18}
+                  color={Colors.white}
+                />
                 <Text style={styles.submitBtnText}>Register Student</Text>
               </>
             )}
@@ -225,78 +416,274 @@ export default function RegisterStudent() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    overflow: "hidden",
+  },
   headerShapeL: {
-    position: "absolute", width: 200, height: 200, borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -40,
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    top: -60,
+    right: -40,
   },
   headerShapeS: {
-    position: "absolute", width: 100, height: 100, borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.05)", bottom: -20, left: -20,
+    position: "absolute",
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    bottom: -20,
+    left: -20,
   },
-  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center", alignItems: "center",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
-  headerSub: { fontSize: FontSize.sm, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  headerTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  },
+  headerSub: {
+    fontSize: FontSize.sm,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
   progressRow: { flexDirection: "row" },
   progressPill: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md, paddingVertical: 5, gap: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 5,
+    gap: 5,
   },
-  progressText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.white },
+  progressText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
+  },
   body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
   sectionLabel: {
-    fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
-    textTransform: "uppercase", letterSpacing: 1.2,
-    marginBottom: Spacing.sm, marginTop: Spacing.md,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.subtext,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.md,
   },
   formCard: {
-    backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    borderWidth: 1, borderColor: Colors.border,
-    overflow: "hidden", ...Shadows.sm, marginBottom: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+    ...Shadows.sm,
+    marginBottom: Spacing.sm,
   },
   fieldRow: {
-    flexDirection: "row", alignItems: "flex-start",
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    gap: Spacing.md,
   },
   fieldIcon: {
-    width: 38, height: 38, borderRadius: Radius.md,
-    justifyContent: "center", alignItems: "center", marginTop: Spacing.lg + 2,
+    width: 38,
+    height: 38,
+    borderRadius: Radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: Spacing.lg + 2,
   },
   fieldInput: { flex: 1 },
   fieldDivider: {
-    height: 1, backgroundColor: Colors.border,
+    height: 1,
+    backgroundColor: Colors.border,
     marginLeft: Spacing.md + 38 + Spacing.md,
   },
   infoNote: {
-    flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
-    backgroundColor: Colors.primaryLight, borderRadius: Radius.lg,
-    padding: Spacing.md, marginTop: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.primary + "20",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.primary + "20",
   },
-  infoNoteText: { flex: 1, fontSize: FontSize.xs, color: Colors.primary, lineHeight: 18 },
+  infoNoteText: {
+    flex: 1,
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    lineHeight: 18,
+  },
   bottomBar: {
-    flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
-    backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
-    gap: Spacing.md, ...Shadows.md,
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+    ...Shadows.md,
   },
   cancelBtn: {
-    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: Radius.lg, paddingVertical: Spacing.md,
-    alignItems: "center", justifyContent: "center",
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  cancelBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
-  submitBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
+  cancelBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+  },
+  submitBtn: {
+    flex: 2,
+    borderRadius: Radius.lg,
+    overflow: "hidden",
+    ...Shadows.colored,
+  },
   submitBtnDisabled: { opacity: 0.7 },
   submitGradient: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, gap: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
   },
-  submitBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
+  submitBtnText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
+  },
+  pickLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: Colors.subtext,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: Spacing.xs,
+  },
+  pickButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: Colors.border,
+  },
+  pickButtonText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+  },
+  pickButtonSubtext: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    marginTop: 2,
+  },
+  pickPlaceholder: {
+    fontSize: FontSize.md,
+    color: Colors.placeholder,
+  },
+  errorText: {
+    fontSize: FontSize.xs,
+    color: Colors.error,
+    marginTop: Spacing.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    padding: Spacing.sm,
+  },
+  courseList: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+  },
+  courseOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    gap: Spacing.md,
+  },
+  courseOptionActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  courseOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  courseOptionCode: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+  },
+  courseOptionInfo: {
+    flex: 1,
+  },
+  courseOptionName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  courseOptionSubtext: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+  },
 });

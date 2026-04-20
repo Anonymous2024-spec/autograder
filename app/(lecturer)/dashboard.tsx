@@ -58,6 +58,17 @@ const ACTIONS = [
     statLabel: "students graded",
     tag: "Auto Marking",
   },
+  {
+    id: "students",
+    title: "My Students",
+    subtitle: "View student results & progress",
+    icon: "people",
+    route: "/(lecturer)/students",
+    gradient: ["#DC2626", "#B91C1C"] as [string, string],
+    stat: "156",
+    statLabel: "students enrolled",
+    tag: "Student Progress",
+  },
 ];
 
 // Activity feed mock — TODO: Replace with API

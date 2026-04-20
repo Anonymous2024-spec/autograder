@@ -88,6 +88,14 @@ export default function StudentsScreen() {
   const handleOptions = (student: { id: number; name: string }) => {
     Alert.alert(student.name, "What would you like to do?", [
       {
+        text: "View Details",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/students/detail",
+            params: { id: student.id },
+          }),
+      },
+      {
         text: "Edit",
         onPress: () =>
           router.push({
