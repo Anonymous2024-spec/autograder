@@ -115,7 +115,6 @@ export default function AdminQuestionsScreen() {
   const courseUnits = selectedCourse
     ? COURSE_UNITS.filter((u) => u.courseId === selectedCourse.id)
     : [];
-    
 
   // Questions filtered by selected unit
   const questions = selectedUnit
@@ -160,7 +159,7 @@ export default function AdminQuestionsScreen() {
         onPress: () =>
           router.push({
             pathname: "/(admin)/questions/edit",
-            params: { id: question.id },
+            params: { id: question.id, unitId: selectedUnit?.id },
           }),
       },
       {

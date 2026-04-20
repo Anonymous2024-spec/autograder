@@ -364,7 +364,7 @@ export default function AnswerSheetScreen() {
           <View style={styles.answersGrid}>
             {selectedQuestions.map((q, index) => (
               <View key={q.id} style={styles.answerItem}>
-                <Text style={styles.answerNum}>{index + 1}.</Text>
+                <Text style={styles.answerNum}>{index + 1}</Text>
                 <View style={styles.answerBox} />
               </View>
             ))}
@@ -696,24 +696,25 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: Spacing.md,
     marginBottom: Spacing.md,
+    justifyContent: "flex-start",
   },
   answerItem: {
-    flexDirection: "row",
+    width: "20%",
     alignItems: "center",
-    width: "22%",
     gap: Spacing.xs,
+    flexDirection: "column",
   },
   answerNum: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.bold,
     color: Colors.text,
   },
   answerBox: {
-    width: 34,
-    height: 34,
+    width: 48,
+    height: 48,
     borderWidth: 2,
     borderColor: Colors.text,
-    borderRadius: Radius.xs,
+    borderRadius: Radius.sm,
   },
   refTitle: {
     fontSize: FontSize.sm,
