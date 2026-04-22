@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   StyleSheet,
   Text,
@@ -12,10 +13,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { gradingAPI, lecturerAPI } from "../../../services/api";
 
 export default function ScanScreen() {
   const router = useRouter();
   const { courseId, studentId } = useLocalSearchParams();
+  const { token, user } = useAuth();
 
   // Camera permission hook
   const [permission, requestPermission] = useCameraPermissions();
@@ -28,6 +32,26 @@ export default function ScanScreen() {
 
   // Track processing state after capture
   const [processing, setProcessing] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+
+  // Fetch questions for this course
+  const fetchQuestions = async () => {
+    if (!token || !courseId) return;
+    
+    try {
+      // Get course details to find units, then get questions for units
+      const courseData = await lecturerAPI.getCourse(Number(courseId), token);
+      if (courseData?.units && courseData.units.length > 0) {
+        // Get questions from first unit (for simplicity)
+        const unitId = courseData.units[0].id;
+        const questionsData = await lecturerAPI.getUnitQuestions(unitId, token);
+        setQuestions(questionsData || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch questions:", err);
+    }
+  };
 
   // Handle taking a picture
   const handleCapture = async () => {
@@ -41,6 +65,8 @@ export default function ScanScreen() {
 
       if (photo?.uri) {
         setCapturedImage(photo.uri);
+        // Fetch questions after capture
+        fetchQuestions();
       }
     } catch (err) {
       console.error("Failed to capture image:", err);
@@ -50,27 +76,69 @@ export default function ScanScreen() {
   // Discard captured image and retake
   const handleRetake = () => {
     setCapturedImage(null);
+    setSelectedQuestion(null);
+    setQuestions([]);
   };
 
   // Proceed to result screen with captured image
   const handleProceed = async () => {
-    if (!capturedImage) return;
+    if (!capturedImage || !selectedQuestion || !token) {
+      Alert.alert("Error", "Please select a question to grade");
+      return;
+    }
 
     setProcessing(true);
 
-    // TODO: Send capturedImage to Gemini API for OCR
-    // For now just navigate to result screen with image URI
-    setTimeout(() => {
+    try {
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append("question_id", selectedQuestion.id.toString());
+      formData.append("student_id", studentId?.toString() || "");
+      
+      // Append the image file
+      const filename = capturedImage.split("/").pop() || "answer.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+      
+      formData.append("answer_sheet", {
+        uri: capturedImage,
+        name: filename,
+        type,
+      } as any);
+
+      // Call backend API
+      const response = await fetch("http://localhost:3000/api/grade", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Grading failed");
+      }
+
+      const result = await response.json();
+      
       setProcessing(false);
+      
+      // Navigate to result screen with grading data
       router.push({
         pathname: "/grading/result",
         params: {
           courseId,
           studentId,
           imageUri: capturedImage,
+          gradingResult: JSON.stringify(result),
         },
       });
-    }, 1500);
+    } catch (err: any) {
+      console.error("Grading error:", err);
+      setProcessing(false);
+      Alert.alert("Error", err.message || "Failed to grade. Please try again.");
+    }
   };
 
   // ── Permission not yet determined ──
@@ -149,11 +217,35 @@ export default function ScanScreen() {
                   size={20}
                   color={Colors.white}
                 />
-                <Text style={styles.proceedBtnText}>Use This Scan</Text>
+                <Text style={styles.proceedBtnText}>Grade This</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Question selection - show after capture */}
+        {questions.length > 0 && (
+          <View style={styles.questionSelect}>
+            <Text style={styles.questionSelectTitle}>Select Question to Grade</Text>
+            {questions.map((q: any) => (
+              <TouchableOpacity
+                key={q.id}
+                style={[
+                  styles.questionOption,
+                  selectedQuestion?.id === q.id && styles.questionOptionActive,
+                ]}
+                onPress={() => setSelectedQuestion(q)}
+              >
+                <Text style={styles.questionOptionText}>
+                  {q.question_text || `Question ${q.id}`}
+                </Text>
+                <Text style={styles.questionOptionMarks}>
+                  {q.total_marks} marks
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -416,5 +508,44 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: "600",
     color: Colors.white,
+  },
+  
+  // Question selection
+  questionSelect: {
+    backgroundColor: Colors.white,
+    padding: Spacing.md,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    maxHeight: 200,
+  },
+  questionSelectTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  questionOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.xs,
+  },
+  questionOptionActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  questionOptionText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+  },
+  questionOptionMarks: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    fontWeight: "600",
   },
 });

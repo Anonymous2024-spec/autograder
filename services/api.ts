@@ -142,6 +142,9 @@ export const lecturerAPI = {
 
   getCourseGrades: (courseId: number, token: string) =>
     apiCall(`/lecturer/grades/course/${courseId}`, { token }),
+
+  getCourseStudents: (courseId: number, token: string) =>
+    apiCall(`/lecturer/courses/${courseId}/students`, { token }),
 };
 
 // ============ STUDENT ENDPOINTS ============
