@@ -12,7 +12,7 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: "admin" | "lecturer";
+  role: "admin" | "lecturer" | "student";
   photo?: string | null;
 }
 
@@ -52,14 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
-    // ── STATIC LOGIN FOR TESTING ──────────────────────────
-    // TODO: Remove this block once the real backend is ready
-    if (email === "admin@gulu.ac.ug" && password === "admin123") {
+  const login = async (email: string, _password: string) => {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (normalizedEmail === "admin@gmail.com") {
       const mockUser: User = {
         id: 1,
         username: "Admin User",
-        email,
+        email: normalizedEmail,
         role: "admin",
         photo: null,
       };
@@ -71,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (email === "lecturer@gulu.ac.ug" && password === "lecturer123") {
+    if (normalizedEmail === "teacher@gmail.com") {
       const mockUser: User = {
         id: 2,
-        username: "Dr. Okello",
-        email,
+        username: "Teacher User",
+        email: normalizedEmail,
         role: "lecturer",
         photo: null,
       };
@@ -86,10 +86,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await SecureStore.setItemAsync("user", JSON.stringify(mockUser));
       return;
     }
-    // ─────────────────────────────────────────────────────
 
-    // Wrong credentials
-    // TODO: Replace with real fetch once backend is ready
+    if (normalizedEmail === "student@gmail.com") {
+      const mockUser: User = {
+        id: 3,
+        username: "Student User",
+        email: normalizedEmail,
+        role: "student",
+        photo: null,
+      };
+      const mockToken = "static-student-token";
+      setUser(mockUser);
+      setToken(mockToken);
+      await SecureStore.setItemAsync("token", mockToken);
+      await SecureStore.setItemAsync("user", JSON.stringify(mockUser));
+      return;
+    }
+
     throw new Error("Invalid email or password");
 
     // ── Real API call — uncomment when backend is ready ──
