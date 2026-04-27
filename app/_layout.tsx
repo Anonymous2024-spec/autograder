@@ -13,13 +13,17 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
+    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "login";
 
     if (!user && !inAuthGroup) {
       router.replace("/(auth)/login");
     } else if (user && inAuthGroup) {
       if (user.role === "admin") {
         router.replace("/(admin)/dashboard");
+      } else if (user.role === "lecturer") {
+        router.replace("/(lecturer)/dashboard");
+      } else if (user.role === "student") {
+        router.replace("/(lecturer)/dashboard");
       } else {
         router.replace("/(lecturer)/dashboard");
       }

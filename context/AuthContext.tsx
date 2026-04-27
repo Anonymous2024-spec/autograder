@@ -77,8 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setToken(data.access_token);
       setUser(data.user);
-      await SecureStore.setItemAsync("token", data.access_token);
-      await SecureStore.setItemAsync("user", JSON.stringify(data.user));
+      
+      try {
+        await SecureStore.setItemAsync("token", data.access_token);
+        await SecureStore.setItemAsync("user", JSON.stringify(data.user));
+      } catch (storeErr) {
+        console.warn("SecureStore unavailable:", storeErr);
+      }
     } catch (err: any) {
       const errorMessage = err.message || "Login failed. Please try again.";
       setError(errorMessage);
