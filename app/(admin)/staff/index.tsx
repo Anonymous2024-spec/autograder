@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
@@ -20,73 +21,63 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
-const STAFF = [
-  {
-    id: 1,
-    username: "Dr. Okello",
-    email: "okello@gulu.ac.ug",
-    role: "lecturer",
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    username: "Dr. Achen",
-    email: "achen@gulu.ac.ug",
-    role: "lecturer",
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    username: "Admin User",
-    email: "admin@gulu.ac.ug",
-    role: "admin",
-    color: Colors.cardPurple,
-  },
-];
-
-const FILTERS = ["All", "lecturer", "admin"];
+const AVATAR_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function StaffScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
+  const [lecturers, setLecturers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
 
-  const filtered = STAFF.filter((s) => {
-    const matchSearch =
-      s.username.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = activeFilter === "All" || s.role === activeFilter;
-    return matchSearch && matchFilter;
+  useEffect(() => {
+    if (!token) return;
+    adminAPI.getAllLecturers(token)
+      .then((data) => setLecturers(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = lecturers.filter((s) => {
+    const name = s.user?.full_name ?? "";
+    const email = s.user?.email ?? "";
+    return (
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase())
+    );
   });
 
-  const handleOptions = (member: { id: number; username: string }) => {
-    Alert.alert(member.username, "What would you like to do?", [
-      {
-        text: "Edit",
-        onPress: () =>
-          router.push({
-            pathname: "/(admin)/staff/edit",
-            params: { id: member.id },
-          }),
-      },
+  const handleOptions = (member: any) => {
+    const name = member.user?.full_name ?? "Lecturer";
+    Alert.alert(name, "What would you like to do?", [
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => confirmDelete(member.id),
+        onPress: () => confirmDelete(member.user_id, name),
       },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
-  const confirmDelete = (id: number) => {
-    Alert.alert("Delete Staff", "Are you sure?", [
+  const confirmDelete = (userId: number, name: string) => {
+    Alert.alert("Delete Lecturer", `Delete ${name}? This cannot be undone.`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => console.log("Delete staff:", id),
+        onPress: async () => {
+          if (!token) return;
+          try {
+            await adminAPI.deleteUser(userId, token);
+            setLecturers((prev) => prev.filter((l) => l.user_id !== userId));
+          } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to delete");
+          }
+        },
       },
     ]);
   };
@@ -111,9 +102,9 @@ export default function StaffScreen() {
             <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Staff & Users</Text>
+            <Text style={styles.headerTitle}>Lecturers</Text>
             <Text style={styles.headerSub}>
-              {STAFF.length} registered members
+              {lecturers.length} registered lecturer{lecturers.length !== 1 ? "s" : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -145,116 +136,72 @@ export default function StaffScreen() {
         </View>
       </LinearGradient>
 
-      {/* ── Filters ── */}
-      <View style={styles.filtersRow}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[
-              styles.filterChip,
-              activeFilter === f && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(f)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeFilter === f && styles.filterChipTextActive,
-              ]}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>
           Showing <Text style={styles.resultsCount}>{filtered.length}</Text>{" "}
-          {filtered.length === 1 ? "member" : "members"}
+          {filtered.length === 1 ? "lecturer" : "lecturers"}
         </Text>
       </View>
 
       {/* ── List ── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={[styles.emptyIconBox, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons
-                name="person-outline"
-                size={40}
-                color={Colors.cardPurple}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>No Staff Found</Text>
-            <Text style={styles.emptyText}>
-              {search ? "Try a different search" : "Tap + to add staff"}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <LinearGradient
-              colors={[item.color, item.color + "CC"]}
-              style={styles.cardAvatar}
-            >
-              <Text style={styles.cardAvatarText}>{item.username[0]}</Text>
-            </LinearGradient>
-
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName}>{item.username}</Text>
-              <View style={styles.cardMetaRow}>
-                <Ionicons
-                  name="mail-outline"
-                  size={12}
-                  color={Colors.subtext}
-                />
-                <Text style={styles.cardMeta}>{item.email}</Text>
+      {loading ? (
+        <ActivityIndicator color={Colors.cardPurple} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconBox, { backgroundColor: "#EDE9FE" }]}>
+                <Ionicons name="person-outline" size={40} color={Colors.cardPurple} />
               </View>
+              <Text style={styles.emptyTitle}>No Lecturers Found</Text>
+              <Text style={styles.emptyText}>
+                {search ? "Try a different search" : "No lecturers registered yet"}
+              </Text>
             </View>
-
-            <View style={styles.cardRight}>
-              <View
-                style={[
-                  styles.roleBadge,
-                  {
-                    backgroundColor:
-                      item.role === "admin" ? "#EDE9FE" : Colors.primaryLight,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.roleBadgeText,
-                    {
-                      color:
-                        item.role === "admin"
-                          ? Colors.cardPurple
-                          : Colors.primary,
-                    },
-                  ]}
+          }
+          renderItem={({ item, index }) => {
+            const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
+            const name = item.user?.full_name ?? "Lecturer";
+            return (
+              <View style={styles.card}>
+                <LinearGradient
+                  colors={[color, color + "CC"]}
+                  style={styles.cardAvatar}
                 >
-                  {item.role}
-                </Text>
+                  <Text style={styles.cardAvatarText}>{name[0]}</Text>
+                </LinearGradient>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>{name}</Text>
+                  <View style={styles.cardMetaRow}>
+                    <Ionicons name="mail-outline" size={12} color={Colors.subtext} />
+                    <Text style={styles.cardMeta}>{item.user?.email}</Text>
+                  </View>
+                  {item.department ? (
+                    <View style={styles.cardMetaRow}>
+                      <Ionicons name="business-outline" size={12} color={Colors.subtext} />
+                      <Text style={styles.cardMeta}>{item.department}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.cardRight}>
+                  <View style={[styles.roleBadge, { backgroundColor: Colors.primaryLight }]}>
+                    <Text style={[styles.roleBadgeText, { color: Colors.primary }]}>
+                      Lecturer
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.menuBtn} onPress={() => handleOptions(item)}>
+                    <Ionicons name="ellipsis-vertical" size={18} color={Colors.subtext} />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity
-                style={styles.menuBtn}
-                onPress={() => handleOptions(item)}
-              >
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={18}
-                  color={Colors.subtext}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
+            );
+          }}
+        />
+      )}
     </View>
   );
 }

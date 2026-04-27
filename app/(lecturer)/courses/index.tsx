@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -19,45 +20,39 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
-const ASSIGNED_COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    units: 5,
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    units: 4,
-    color: Colors.cardTeal,
-  },
-];
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function LecturerCoursesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const filtered = ASSIGNED_COURSES.filter(
+  useEffect(() => {
+    if (!token) return;
+    lecturerAPI.getCourses(token)
+      .then((data) => setCourses(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = courses.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
       c.code.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleViewUnits = (course: {
-    id: number;
-    name: string;
-    code: string;
-  }) => {
+  const handleViewUnits = (course: any) => {
     router.push({
       pathname: "/(lecturer)/courses/units",
       params: {
         courseId: course.id,
-        courseName: course.name,
+        courseName: course.title,
         courseCode: course.code,
       },
     });
@@ -85,7 +80,7 @@ export default function LecturerCoursesScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>My Courses</Text>
             <Text style={styles.headerSub}>
-              {ASSIGNED_COURSES.length} assigned courses
+              {courses.length} assigned course{courses.length !== 1 ? "s" : ""}
             </Text>
           </View>
         </View>
@@ -119,83 +114,70 @@ export default function LecturerCoursesScreen() {
       </View>
 
       {/* ── List ── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View
-              style={[
-                styles.emptyIconBox,
-                { backgroundColor: Colors.primaryLight },
-              ]}
-            >
-              <Ionicons name="book-outline" size={40} color={Colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No Courses Found</Text>
-            <Text style={styles.emptyText}>
-              {search
-                ? "Try a different search"
-                : "You have no assigned courses"}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleViewUnits(item)}
-            activeOpacity={0.85}
-          >
-            {/* Color bar on left */}
-            <View style={[styles.colorBar, { backgroundColor: item.color }]} />
-
-            {/* Icon */}
-            <View
-              style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}
-            >
-              <Ionicons name="book" size={22} color={item.color} />
-            </View>
-
-            {/* Info */}
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName} numberOfLines={2}>
-                {item.name}
-              </Text>
-              <View style={styles.cardBottom}>
-                <View
-                  style={[
-                    styles.codeBadge,
-                    { backgroundColor: item.color + "18" },
-                  ]}
-                >
-                  <Text style={[styles.codeBadgeText, { color: item.color }]}>
-                    {item.code}
-                  </Text>
-                </View>
-                <View style={styles.unitCount}>
-                  <Ionicons
-                    name="layers-outline"
-                    size={12}
-                    color={Colors.subtext}
-                  />
-                  <Text style={styles.unitCountText}>{item.units} units</Text>
-                </View>
+      {loading ? (
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View
+                style={[
+                  styles.emptyIconBox,
+                  { backgroundColor: Colors.primaryLight },
+                ]}
+              >
+                <Ionicons name="book-outline" size={40} color={Colors.primary} />
               </View>
+              <Text style={styles.emptyTitle}>No Courses Found</Text>
+              <Text style={styles.emptyText}>
+                {search
+                  ? "Try a different search"
+                  : "You have no assigned courses"}
+              </Text>
             </View>
-
-            {/* Arrow */}
-            <TouchableOpacity style={styles.arrowBtn}>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.subtext}
-              />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-      />
+          }
+          renderItem={({ item, index }) => {
+            const color = COURSE_COLORS[index % COURSE_COLORS.length];
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => handleViewUnits(item)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.colorBar, { backgroundColor: color }]} />
+                <View style={[styles.cardIcon, { backgroundColor: color + "18" }]}>
+                  <Ionicons name="book" size={22} color={color} />
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <View style={styles.cardBottom}>
+                    <View style={[styles.codeBadge, { backgroundColor: color + "18" }]}>
+                      <Text style={[styles.codeBadgeText, { color }]}>
+                        {item.code}
+                      </Text>
+                    </View>
+                    <View style={styles.unitCount}>
+                      <Ionicons name="layers-outline" size={12} color={Colors.subtext} />
+                      <Text style={styles.unitCountText}>
+                        {item.units?.length ?? 0} unit{item.units?.length !== 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity style={styles.arrowBtn}>
+                  <Ionicons name="chevron-forward" size={20} color={Colors.subtext} />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }

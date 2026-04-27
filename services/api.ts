@@ -3,7 +3,7 @@
  * Handles all backend API communication
  */
 
-const API_BASE_URL = "http://localhost:3000/api";
+import { API_BASE_URL } from "../config";
 
 // Helper to make authenticated requests
 export async function apiCall(
@@ -84,6 +84,21 @@ export const adminAPI = {
   getAllLecturers: (token: string) =>
     apiCall("/admin/lecturers", { token }),
 
+  getAllCourses: (token: string) =>
+    apiCall("/admin/courses", { token }),
+
+  enrollStudent: (studentId: number, courseId: number, token: string) =>
+    apiCall(`/admin/enroll?student_id=${studentId}&course_id=${courseId}`, {
+      method: "POST",
+      token,
+    }),
+
+  unenrollStudent: (studentId: number, courseId: number, token: string) =>
+    apiCall(`/admin/enroll?student_id=${studentId}&course_id=${courseId}`, {
+      method: "DELETE",
+      token,
+    }),
+
   deleteUser: (userId: number, token: string) =>
     apiCall(`/admin/users/${userId}`, { method: "DELETE", token }),
 };
@@ -145,6 +160,9 @@ export const lecturerAPI = {
 
   getCourseStudents: (courseId: number, token: string) =>
     apiCall(`/lecturer/courses/${courseId}/students`, { token }),
+
+  getCourseQuestions: (courseId: number, token: string) =>
+    apiCall(`/lecturer/courses/${courseId}/questions`, { token }),
 };
 
 // ============ STUDENT ENDPOINTS ============

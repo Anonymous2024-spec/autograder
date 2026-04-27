@@ -1,19 +1,19 @@
 /**
  * Configuration for the frontend app
- * Update API_BASE_URL to match your backend deployment
+ * Update API_BASE_URL to match your backend deployment.
+ * The backend runs inside Docker, exposed on host port 3000.
+ *
+ * Uncomment the line that matches your setup:
  */
 
-// For local development (Docker)
+// iOS simulator / Expo Web / local browser:
 // export const API_BASE_URL = "http://localhost:3000/api";
 
-// For Android emulator
+// Android emulator (10.0.2.2 routes to the host machine):
 // export const API_BASE_URL = "http://10.0.2.2:3000/api";
 
-// For iOS simulator
-// export const API_BASE_URL = "http://127.0.0.1:3000/api";
-
-// For physical device on WiFi (replace with your machine IP)
-export const API_BASE_URL = "http://192.168.1.5:3000/api";
+// Physical device on WiFi (machine's LAN IP):
+export const API_BASE_URL = "http://192.168.8.196:3000/api";
 
 // Timeout for API requests (in milliseconds)
 export const API_TIMEOUT = 30000;

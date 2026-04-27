@@ -35,19 +35,12 @@ export default function ScanScreen() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
-  // Fetch questions for this course
+  // Fetch all questions for this course across all units
   const fetchQuestions = async () => {
     if (!token || !courseId) return;
-    
     try {
-      // Get course details to find units, then get questions for units
-      const courseData = await lecturerAPI.getCourse(Number(courseId), token);
-      if (courseData?.units && courseData.units.length > 0) {
-        // Get questions from first unit (for simplicity)
-        const unitId = courseData.units[0].id;
-        const questionsData = await lecturerAPI.getUnitQuestions(unitId, token);
-        setQuestions(questionsData || []);
-      }
+      const questionsData = await lecturerAPI.getCourseQuestions(Number(courseId), token);
+      setQuestions(Array.isArray(questionsData) ? questionsData : []);
     } catch (err) {
       console.error("Failed to fetch questions:", err);
     }
@@ -90,43 +83,21 @@ export default function ScanScreen() {
     setProcessing(true);
 
     try {
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append("question_id", selectedQuestion.id.toString());
-      formData.append("student_id", studentId?.toString() || "");
-      
-      // Append the image file
       const filename = capturedImage.split("/").pop() || "answer.jpg";
       const match = /\.(\w+)$/.exec(filename);
       const type = match ? `image/${match[1]}` : "image/jpeg";
-      
-      formData.append("answer_sheet", {
-        uri: capturedImage,
-        name: filename,
-        type,
-      } as any);
 
-      // Call backend API
-      const response = await fetch("http://localhost:3000/api/grade", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const result = await gradingAPI.gradeQuestion(
+        selectedQuestion.id,
+        Number(studentId),
+        { uri: capturedImage, name: filename, type } as any,
+        token
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Grading failed");
-      }
-
-      const result = await response.json();
-      
       setProcessing(false);
-      
-      // Navigate to result screen with grading data
+
       router.push({
-        pathname: "/grading/result",
+        pathname: "/(lecturer)/grading/result",
         params: {
           courseId,
           studentId,
