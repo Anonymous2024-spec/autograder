@@ -1,10 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,92 +18,74 @@ import {
   Spacing,
 } from "../../../constants";
 
-const MOCK_RESULTS = [
-  {
-    id: 1,
-    question: "What is the full meaning of CPU?",
-    options: [
-      { label: "A", text: "Central Processing Unit" },
-      { label: "B", text: "Computer Personal Unit" },
-      { label: "C", text: "Central Program Utility" },
-      { label: "D", text: "Core Processing Unit" },
-    ],
-    correct_answer: "A",
-    detected_answer: "A",
-  },
-  {
-    id: 2,
-    question: "Which data structure uses FIFO order?",
-    options: [
-      { label: "A", text: "Stack" },
-      { label: "B", text: "Queue" },
-      { label: "C", text: "Tree" },
-      { label: "D", text: "Graph" },
-    ],
-    correct_answer: "B",
-    detected_answer: "C",
-  },
-  {
-    id: 3,
-    question: "What does RAM stand for?",
-    options: [
-      { label: "A", text: "Random Access Memory" },
-      { label: "B", text: "Read Access Module" },
-      { label: "C", text: "Random Array Memory" },
-      { label: "D", text: "Read Allocate Memory" },
-    ],
-    correct_answer: "A",
-    detected_answer: "A",
-  },
-  {
-    id: 4,
-    question: "Which language is used for web styling?",
-    options: [
-      { label: "A", text: "Python" },
-      { label: "B", text: "Java" },
-      { label: "C", text: "CSS" },
-      { label: "D", text: "C++" },
-    ],
-    correct_answer: "C",
-    detected_answer: null,
-  },
-];
+type QuestionResult = {
+  question_number: number;
+  question?: string;
+  student_answer: string;
+  correct_answer: string;
+  marks_awarded: number;
+  marks_available: number;
+  is_correct: boolean;
+  feedback?: string;
+};
+
+type GradingResult = {
+  questions: QuestionResult[];
+  total_marks_awarded: number;
+  total_marks_available: number;
+  overall_score: string;
+  percentage: number;
+  grade: string;
+  summary?: string;
+};
+
+function getGradeStyle(percentage: number) {
+  if (percentage >= 70) return { label: "Distinction", color: Colors.success, bg: Colors.successLight };
+  if (percentage >= 60) return { label: "Credit", color: Colors.primary, bg: Colors.primaryLight };
+  if (percentage >= 50) return { label: "Pass", color: Colors.warning, bg: Colors.warningLight };
+  return { label: "Fail", color: Colors.error, bg: Colors.errorLight };
+}
 
 export default function GradeResult() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { courseId, studentId } = useLocalSearchParams();
+  const { courseId, studentId, gradingResult: gradingResultRaw } = useLocalSearchParams();
 
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // Parse grading result from navigation params
+  let gradingData: GradingResult | null = null;
+  let parseError = false;
+  try {
+    const parsed = typeof gradingResultRaw === "string" ? JSON.parse(gradingResultRaw) : null;
+    // The backend returns { grade: {...}, grading_result: {...} }
+    gradingData = parsed?.grading_result ?? parsed;
+    if (!gradingData?.questions) parseError = true;
+  } catch {
+    parseError = true;
+  }
 
-  const correct = MOCK_RESULTS.filter((q) => q.detected_answer === q.correct_answer).length;
-  const total = MOCK_RESULTS.length;
-  const undetected = MOCK_RESULTS.filter((q) => q.detected_answer === null).length;
-  const wrong = total - correct - undetected;
-  const percentage = Math.round((correct / total) * 100);
+  if (parseError || !gradingData) {
+    return (
+      <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
+        <Text style={{ color: Colors.text, marginTop: Spacing.md, fontSize: FontSize.md }}>
+          Could not load grading result.
+        </Text>
+        <TouchableOpacity
+          style={{ marginTop: Spacing.lg, padding: Spacing.md }}
+          onPress={() => router.replace("/(lecturer)/grading")}
+        >
+          <Text style={{ color: Colors.primary, fontWeight: FontWeight.bold }}>Back to Grading</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-  const getGrade = () => {
-    if (percentage >= 80) return { label: "Distinction", color: Colors.success, bg: Colors.successLight };
-    if (percentage >= 70) return { label: "Credit", color: Colors.primary, bg: Colors.primaryLight };
-    if (percentage >= 60) return { label: "Pass", color: Colors.warning, bg: Colors.warningLight };
-    return { label: "Fail", color: Colors.error, bg: Colors.errorLight };
-  };
+  const { questions, total_marks_awarded, total_marks_available, percentage, grade, summary } = gradingData;
+  const gradeStyle = getGradeStyle(percentage);
 
-  const grade = getGrade();
-
-  const handleSave = () => {
-    Alert.alert("Save Mark", `Save ${correct}/${total} (${percentage}%) for this student?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Save",
-        onPress: async () => {
-          setSaving(true);
-          setTimeout(() => { setSaving(false); setSaved(true); }, 1500);
-        },
-      },
-    ]);
-  };
+  const correct = questions.filter((q) => q.is_correct).length;
+  const wrong = questions.filter((q) => !q.is_correct && q.student_answer).length;
+  const unread = questions.filter((q) => !q.student_answer).length;
 
   return (
     <View style={styles.root}>
@@ -126,12 +105,11 @@ export default function GradeResult() {
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Grade Report</Text>
-            <Text style={styles.headerSub}>Auto-marked answer sheet result</Text>
+            <Text style={styles.headerSub}>AI-marked answer sheet result</Text>
           </View>
-          {/* Grade badge in header */}
-          <View style={[styles.headerGradeBadge, { backgroundColor: grade.color + "30" }]}>
+          <View style={[styles.headerGradeBadge, { backgroundColor: gradeStyle.color + "30" }]}>
             <Text style={[styles.headerGradeBadgeText, { color: Colors.white }]}>
-              {grade.label}
+              {grade} — {gradeStyle.label}
             </Text>
           </View>
         </View>
@@ -139,8 +117,8 @@ export default function GradeResult() {
         {/* Score summary strip */}
         <View style={styles.scoreStrip}>
           <View style={styles.scoreMain}>
-            <Text style={styles.scorePercent}>{percentage}%</Text>
-            <Text style={styles.scoreFraction}>{correct}/{total} correct</Text>
+            <Text style={styles.scorePercent}>{Math.round(percentage)}%</Text>
+            <Text style={styles.scoreFraction}>{total_marks_awarded}/{total_marks_available} marks</Text>
           </View>
           <View style={styles.stripDivider} />
           <View style={styles.stripStat}>
@@ -157,7 +135,7 @@ export default function GradeResult() {
           <View style={styles.stripDivider} />
           <View style={styles.stripStat}>
             <View style={[styles.stripDot, { backgroundColor: Colors.warning }]} />
-            <Text style={styles.stripNum}>{undetected}</Text>
+            <Text style={styles.stripNum}>{unread}</Text>
             <Text style={styles.stripLbl}>Unread</Text>
           </View>
         </View>
@@ -165,19 +143,26 @@ export default function GradeResult() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
       >
-        {/* Undetected warning */}
-        {undetected > 0 && (
+        {/* Summary from AI */}
+        {summary ? (
+          <View style={styles.summaryBox}>
+            <View style={styles.summaryIconBox}>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color={Colors.primary} />
+            </View>
+            <Text style={styles.summaryText}>{summary}</Text>
+          </View>
+        ) : null}
+
+        {/* Unread warning */}
+        {unread > 0 && (
           <View style={styles.warningBox}>
             <View style={styles.warningIconBox}>
               <Ionicons name="warning-outline" size={18} color={Colors.warning} />
             </View>
             <Text style={styles.warningText}>
-              {undetected} answer(s) could not be read. Consider re-scanning.
+              {unread} answer(s) could not be read. Consider re-scanning.
             </Text>
           </View>
         )}
@@ -185,169 +170,96 @@ export default function GradeResult() {
         {/* Question breakdown */}
         <Text style={styles.sectionLabel}>Question Breakdown</Text>
 
-        {MOCK_RESULTS.map((q, index) => {
-          const isCorrect = q.detected_answer === q.correct_answer;
-          const isUndetected = q.detected_answer === null;
-
+        {questions.map((q, index) => {
+          const noAnswer = !q.student_answer;
           return (
-            <View key={q.id} style={styles.questionCard}>
-              {/* Left status bar */}
+            <View key={index} style={styles.questionCard}>
               <View
                 style={[
                   styles.questionBar,
                   {
-                    backgroundColor: isUndetected
+                    backgroundColor: noAnswer
                       ? Colors.warning
-                      : isCorrect
+                      : q.is_correct
                       ? Colors.success
                       : Colors.error,
                   },
                 ]}
               />
-
               <View style={styles.questionContent}>
-                {/* Header row */}
                 <View style={styles.questionHeader}>
                   <View style={styles.questionNumBox}>
-                    <Text style={styles.questionNumText}>{index + 1}</Text>
+                    <Text style={styles.questionNumText}>{q.question_number}</Text>
                   </View>
-                  <Text style={styles.questionText} numberOfLines={2}>
-                    {q.question}
+                  <Text style={styles.questionText} numberOfLines={3}>
+                    {q.question || `Question ${q.question_number}`}
                   </Text>
-                  {isUndetected ? (
+                  {noAnswer ? (
                     <Ionicons name="help-circle" size={20} color={Colors.warning} />
-                  ) : isCorrect ? (
+                  ) : q.is_correct ? (
                     <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
                   ) : (
                     <Ionicons name="close-circle" size={20} color={Colors.error} />
                   )}
                 </View>
 
-                {/* Options */}
-                <View style={styles.optionsContainer}>
-                  {q.options.map((opt) => {
-                    const isCorrectOpt = opt.label === q.correct_answer;
-                    const isDetectedOpt = opt.label === q.detected_answer;
-
-                    let bg = Colors.background;
-                    let borderColor = Colors.border;
-                    let labelBg = Colors.border;
-                    let textColor = Colors.text;
-
-                    if (isCorrectOpt) {
-                      bg = "#ECFDF5";
-                      borderColor = Colors.success;
-                      labelBg = Colors.success;
-                      textColor = Colors.success;
-                    }
-                    if (isDetectedOpt && !isCorrectOpt) {
-                      bg = "#FEF2F2";
-                      borderColor = Colors.error;
-                      labelBg = Colors.error;
-                      textColor = Colors.error;
-                    }
-
-                    return (
-                      <View
-                        key={opt.label}
-                        style={[styles.option, { backgroundColor: bg, borderColor }]}
-                      >
-                        <View style={[styles.optionLabel, { backgroundColor: labelBg }]}>
-                          <Text style={styles.optionLabelText}>{opt.label}</Text>
-                        </View>
-                        <Text style={[styles.optionText, { color: textColor }]} numberOfLines={1}>
-                          {opt.text}
-                        </Text>
-                        <View style={styles.tagRow}>
-                          {isCorrectOpt && (
-                            <View style={[styles.tag, { backgroundColor: Colors.success + "20" }]}>
-                              <Text style={[styles.tagText, { color: Colors.success }]}>
-                                {isDetectedOpt ? "✓ Detected" : "Correct"}
-                              </Text>
-                            </View>
-                          )}
-                          {isDetectedOpt && !isCorrectOpt && (
-                            <View style={[styles.tag, { backgroundColor: Colors.error + "20" }]}>
-                              <Text style={[styles.tagText, { color: Colors.error }]}>Detected</Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })}
-
-                  {isUndetected && (
-                    <View style={styles.undetectedBox}>
-                      <Ionicons name="scan-outline" size={13} color={Colors.warning} />
-                      <Text style={styles.undetectedText}>Could not read answer from sheet</Text>
-                    </View>
-                  )}
+                <View style={styles.answerRow}>
+                  <View style={[styles.answerBox, { borderColor: Colors.border }]}>
+                    <Text style={styles.answerLabel}>Student answered</Text>
+                    <Text style={[styles.answerValue, { color: q.is_correct ? Colors.success : Colors.error }]}>
+                      {q.student_answer || "—"}
+                    </Text>
+                  </View>
+                  <View style={[styles.answerBox, { borderColor: Colors.success + "60" }]}>
+                    <Text style={styles.answerLabel}>Correct answer</Text>
+                    <Text style={[styles.answerValue, { color: Colors.success }]}>
+                      {q.correct_answer}
+                    </Text>
+                  </View>
                 </View>
+
+                <View style={styles.marksRow}>
+                  <Text style={styles.marksText}>
+                    {q.marks_awarded}/{q.marks_available} marks
+                  </Text>
+                  {q.feedback ? (
+                    <Text style={styles.feedbackText} numberOfLines={2}>{q.feedback}</Text>
+                  ) : null}
+                </View>
+
+                {noAnswer && (
+                  <View style={styles.undetectedBox}>
+                    <Ionicons name="scan-outline" size={13} color={Colors.warning} />
+                    <Text style={styles.undetectedText}>Could not read answer from sheet</Text>
+                  </View>
+                )}
               </View>
             </View>
           );
         })}
       </ScrollView>
 
-      {/* ── Sticky bottom bar ── */}
+      {/* ── Sticky bottom bar — grade already saved by backend ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
-        {!saved ? (
-          <>
-            <TouchableOpacity
-              style={styles.rescanBtn}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="refresh-outline" size={18} color={Colors.subtext} />
-              <Text style={styles.rescanBtnText}>Rescan</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              disabled={saving}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[Colors.primary, Colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.saveBtnGradient}
-              >
-                {saving ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="save-outline" size={18} color={Colors.white} />
-                    <Text style={styles.saveBtnText}>Save Mark</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <View style={styles.savedBadge}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.savedBadgeText}>Mark saved</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={() => router.replace("/(lecturer)/grading")}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[Colors.success, "#047857"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.saveBtnGradient}
-              >
-                <Ionicons name="arrow-back-outline" size={18} color={Colors.white} />
-                <Text style={styles.saveBtnText}>Back to Grading</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={styles.savedBadge}>
+          <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+          <Text style={styles.savedBadgeText}>Grade saved</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.saveBtn}
+          onPress={() => router.replace("/(lecturer)/grading")}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={[Colors.primary, Colors.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.saveBtnGradient}
+          >
+            <Ionicons name="arrow-back-outline" size={18} color={Colors.white} />
+            <Text style={styles.saveBtnText}>Grade Next Student</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -356,7 +268,6 @@ export default function GradeResult() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
 
-  // ── Header ──
   header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
   headerShapeL: {
     position: "absolute", width: 220, height: 220, borderRadius: 110,
@@ -381,7 +292,6 @@ const styles = StyleSheet.create({
   },
   headerGradeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.5 },
 
-  // Score strip
   scoreStrip: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.12)",
@@ -398,8 +308,22 @@ const styles = StyleSheet.create({
   stripNum: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
   stripLbl: { fontSize: FontSize.xs, color: "rgba(255,255,255,0.65)" },
 
-  // ── Body ──
   body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
+
+  summaryBox: {
+    flexDirection: "row", alignItems: "flex-start",
+    backgroundColor: Colors.primaryLight, borderRadius: Radius.lg,
+    padding: Spacing.md, marginBottom: Spacing.md,
+    borderWidth: 1, borderColor: Colors.primary + "30",
+    gap: Spacing.sm,
+  },
+  summaryIconBox: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.primary + "20",
+    justifyContent: "center", alignItems: "center",
+  },
+  summaryText: { flex: 1, fontSize: FontSize.sm, color: Colors.text, lineHeight: 20 },
+
   warningBox: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.warningLight, borderRadius: Radius.lg,
@@ -413,13 +337,13 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   warningText: { flex: 1, fontSize: FontSize.sm, color: Colors.warning, lineHeight: 18 },
+
   sectionLabel: {
     fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
     textTransform: "uppercase", letterSpacing: 1.2,
     marginBottom: Spacing.md,
   },
 
-  // Question cards
   questionCard: {
     flexDirection: "row",
     backgroundColor: Colors.surface, borderRadius: Radius.xl,
@@ -428,29 +352,28 @@ const styles = StyleSheet.create({
   },
   questionBar: { width: 4 },
   questionContent: { flex: 1, padding: Spacing.md },
-  questionHeader: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.md, gap: Spacing.sm },
+  questionHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.sm, gap: Spacing.sm },
   questionNumBox: {
     width: 26, height: 26, borderRadius: 13,
     backgroundColor: Colors.primaryLight,
     justifyContent: "center", alignItems: "center",
+    flexShrink: 0,
   },
   questionNumText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.primary },
   questionText: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text, lineHeight: 18 },
-  optionsContainer: { gap: Spacing.xs },
-  option: {
-    flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderRadius: Radius.md,
-    padding: Spacing.sm, gap: Spacing.sm,
+
+  answerRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm },
+  answerBox: {
+    flex: 1, borderWidth: 1, borderRadius: Radius.md,
+    padding: Spacing.sm,
   },
-  optionLabel: {
-    width: 24, height: 24, borderRadius: Radius.xs,
-    justifyContent: "center", alignItems: "center",
-  },
-  optionLabelText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.white },
-  optionText: { flex: 1, fontSize: FontSize.sm },
-  tagRow: { flexDirection: "row" },
-  tag: { paddingHorizontal: Spacing.xs, paddingVertical: 2, borderRadius: Radius.xs },
-  tagText: { fontSize: 10, fontWeight: FontWeight.bold },
+  answerLabel: { fontSize: 10, color: Colors.subtext, marginBottom: 2 },
+  answerValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+
+  marksRow: { marginBottom: Spacing.xs },
+  marksText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext },
+  feedbackText: { fontSize: FontSize.xs, color: Colors.subtext, marginTop: 2, lineHeight: 16 },
+
   undetectedBox: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.warningLight, borderRadius: Radius.sm,
@@ -458,25 +381,11 @@ const styles = StyleSheet.create({
   },
   undetectedText: { fontSize: FontSize.xs, color: Colors.warning },
 
-  // ── Bottom bar ──
   bottomBar: {
     flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
     backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
     gap: Spacing.md, ...Shadows.md,
   },
-  rescanBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: Radius.lg, paddingVertical: Spacing.md, gap: Spacing.sm,
-  },
-  rescanBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
-  saveBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
-  saveBtnDisabled: { opacity: 0.7 },
-  saveBtnGradient: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, gap: Spacing.sm,
-  },
-  saveBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
   savedBadge: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     backgroundColor: Colors.successLight, borderRadius: Radius.lg,
@@ -484,4 +393,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.success + "30",
   },
   savedBadgeText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.success },
+  saveBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
+  saveBtnGradient: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: Spacing.md, gap: Spacing.sm,
+  },
+  saveBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
 });

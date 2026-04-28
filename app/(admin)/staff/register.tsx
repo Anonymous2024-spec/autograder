@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,6 +22,8 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { authAPI } from "../../../services/api";
 
 const ROLES = [
   {
@@ -42,6 +45,7 @@ const ROLES = [
 export default function RegisterStaff() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +58,7 @@ export default function RegisterStaff() {
   const validate = () => {
     const e = { username: "", email: "", password: "" };
     let valid = true;
-    if (!username.trim()) { e.username = "Username is required"; valid = false; }
+    if (!username.trim()) { e.username = "Full name is required"; valid = false; }
     if (!email.trim()) { e.email = "Email is required"; valid = false; }
     else if (!email.includes("@")) { e.email = "Enter a valid email"; valid = false; }
     if (!password.trim()) { e.password = "Password is required"; valid = false; }
@@ -66,11 +70,22 @@ export default function RegisterStaff() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: POST to API
-    setTimeout(() => {
+    try {
+      const result = await authAPI.signup(
+        email.trim(),
+        password,
+        username.trim(),
+        role
+      );
+      if (result.detail) throw new Error(result.detail);
+      Alert.alert("Success", `${role === "lecturer" ? "Lecturer" : "Admin"} ${username} registered successfully!`, [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to register staff member");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   const selectedRole = ROLES.find((r) => r.id === role)!;

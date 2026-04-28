@@ -3,9 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  FlatList,
+  Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -23,69 +22,29 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
-
-// Mock courses data
-const COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
-    color: Colors.cardGreen,
-  },
-];
+import { useAuth } from "../../../context/AuthContext";
+import { authAPI } from "../../../services/api";
 
 export default function RegisterStudent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("student123");
   const [regNo, setRegNo] = useState("");
-  const [studentNo, setStudentNo] = useState("");
-  const [courseId, setCourseId] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState<
-    (typeof COURSES)[0] | null
-  >(null);
-  const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({
-    name: "",
-    regNo: "",
-    studentNo: "",
-    courseId: "",
-  });
+  const [errors, setErrors] = useState({ name: "", email: "", regNo: "" });
 
   const validate = () => {
-    const e = { name: "", regNo: "", studentNo: "", courseId: "" };
+    const e = { name: "", email: "", regNo: "" };
     let valid = true;
-    if (!name.trim()) {
-      e.name = "Full name is required";
-      valid = false;
-    }
-    if (!regNo.trim()) {
-      e.regNo = "Registration number is required";
-      valid = false;
-    }
-    if (!studentNo.trim()) {
-      e.studentNo = "Student number is required";
-      valid = false;
-    }
-    if (!selectedCourse) {
-      e.courseId = "Course is required";
-      valid = false;
-    }
+    if (!name.trim()) { e.name = "Full name is required"; valid = false; }
+    if (!email.trim() || !email.includes("@")) { e.email = "Valid email is required"; valid = false; }
+    if (!regNo.trim()) { e.regNo = "Student ID number is required"; valid = false; }
     setErrors(e);
     return valid;
   };
@@ -93,11 +52,24 @@ export default function RegisterStudent() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: POST to API
-    setTimeout(() => {
+    try {
+      const result = await authAPI.signup(
+        email.trim(),
+        password,
+        name.trim(),
+        "student",
+        regNo.trim(),
+        department.trim() || undefined
+      );
+      if (result.detail) throw new Error(result.detail);
+      Alert.alert("Success", `Student ${name} registered successfully!`, [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to register student");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   return (
@@ -143,37 +115,22 @@ export default function RegisterStudent() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Identity section ── */}
         <Text style={styles.sectionLabel}>Student Identity</Text>
         <View style={styles.formCard}>
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.primaryLight },
-              ]}
-            >
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color={Colors.primary}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="person-outline" size={18} color={Colors.primary} />
             </View>
             <View style={styles.fieldInput}>
               <Input
                 label="Full Name"
                 placeholder="e.g. John Doe"
                 value={name}
-                onChangeText={(t) => {
-                  setName(t);
-                  setErrors((p) => ({ ...p, name: "" }));
-                }}
+                onChangeText={(t) => { setName(t); setErrors((p) => ({ ...p, name: "" })); }}
                 icon="person-outline"
                 error={errors.name}
               />
@@ -183,23 +140,35 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.accentLight },
-              ]}
-            >
-              <Ionicons name="card-outline" size={18} color={Colors.accent} />
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
+              <Ionicons name="mail-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Registration Number"
+                label="Email Address"
+                placeholder="e.g. student@example.com"
+                value={email}
+                onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
+                icon="mail-outline"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email}
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldDivider} />
+
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.successLight }]}>
+              <Ionicons name="card-outline" size={18} color={Colors.success} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Student ID Number"
                 placeholder="e.g. 23/U/1234"
                 value={regNo}
-                onChangeText={(t) => {
-                  setRegNo(t);
-                  setErrors((p) => ({ ...p, regNo: "" }));
-                }}
+                onChangeText={(t) => { setRegNo(t); setErrors((p) => ({ ...p, regNo: "" })); }}
                 icon="card-outline"
                 error={errors.regNo}
               />
@@ -209,177 +178,34 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.successLight },
-              ]}
-            >
-              <Ionicons
-                name="id-card-outline"
-                size={18}
-                color={Colors.success}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
+              <Ionicons name="business-outline" size={18} color={Colors.cardPurple} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Student Number"
-                placeholder="e.g. 2300712345"
-                value={studentNo}
-                onChangeText={(t) => {
-                  setStudentNo(t);
-                  setErrors((p) => ({ ...p, studentNo: "" }));
-                }}
-                keyboardType="numeric"
-                icon="id-card-outline"
-                error={errors.studentNo}
+                label="Department (Optional)"
+                placeholder="e.g. Computer Science"
+                value={department}
+                onChangeText={setDepartment}
+                icon="business-outline"
               />
             </View>
           </View>
         </View>
 
-        {/* ── Enrollment section ── */}
-        <Text style={styles.sectionLabel}>Enrollment</Text>
-        <View style={styles.formCard}>
-          <TouchableOpacity
-            style={styles.fieldRow}
-            onPress={() => setShowCoursePicker(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons
-                name="book-outline"
-                size={18}
-                color={Colors.cardPurple}
-              />
-            </View>
-            <View style={styles.fieldInput}>
-              <Text style={styles.pickLabel}>Course</Text>
-              <View style={styles.pickButton}>
-                {selectedCourse ? (
-                  <View>
-                    <Text style={styles.pickButtonText}>
-                      {selectedCourse.name}
-                    </Text>
-                    <Text style={styles.pickButtonSubtext}>
-                      {selectedCourse.code}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pickPlaceholder}>Select a course...</Text>
-                )}
-                <Ionicons
-                  name="chevron-down-outline"
-                  size={20}
-                  color={selectedCourse ? Colors.primary : Colors.placeholder}
-                />
-              </View>
-              {errors.courseId && (
-                <Text style={styles.errorText}>{errors.courseId}</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Info note ── */}
+        {/* Password info */}
         <View style={styles.infoNote}>
-          <Ionicons
-            name="information-circle-outline"
-            size={15}
-            color={Colors.primary}
-          />
+          <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
           <Text style={styles.infoNoteText}>
-            Select the course this student is enrolled in. This determines their
-            course units and assessment schedule.
+            Default password: <Text style={{ fontWeight: "700" }}>student123</Text>.
+            The student can change it after first login.
           </Text>
         </View>
       </ScrollView>
 
-      {/* Course Picker Modal */}
-      <Modal
-        visible={showCoursePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCoursePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View
-              style={[
-                styles.modalHeader,
-                { paddingTop: insets.top + Spacing.md },
-              ]}
-            >
-              <Text style={styles.modalTitle}>Select Course</Text>
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setShowCoursePicker(false)}
-              >
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={COURSES}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.courseList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.courseOption,
-                    selectedCourse?.id === item.id && styles.courseOptionActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedCourse(item);
-                    setCourseId(item.id.toString());
-                    setShowCoursePicker(false);
-                    setErrors((p) => ({ ...p, courseId: "" }));
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.courseOptionIcon,
-                      { backgroundColor: item.color + "20" },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.courseOptionCode, { color: item.color }]}
-                    >
-                      {item.code}
-                    </Text>
-                  </View>
-                  <View style={styles.courseOptionInfo}>
-                    <Text style={styles.courseOptionName}>{item.name}</Text>
-                    <Text style={styles.courseOptionSubtext}>
-                      ID: {item.id}
-                    </Text>
-                  </View>
-                  {selectedCourse?.id === item.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={Colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-
       {/* ── Sticky bottom bar ── */}
-      <View
-        style={[
-          styles.bottomBar,
-          { paddingBottom: insets.bottom + Spacing.md },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
@@ -399,11 +225,7 @@ export default function RegisterStudent() {
               <Text style={styles.submitBtnText}>Registering...</Text>
             ) : (
               <>
-                <Ionicons
-                  name="person-add-outline"
-                  size={18}
-                  color={Colors.white}
-                />
+                <Ionicons name="person-add-outline" size={18} color={Colors.white} />
                 <Text style={styles.submitBtnText}>Register Student</Text>
               </>
             )}

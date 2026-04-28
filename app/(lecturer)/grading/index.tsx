@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,47 +19,54 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
-const COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    color: Colors.cardBlue,
-    students: [
-      { id: 1, name: "John Doe", reg_no: "23/U/1234" },
-      { id: 2, name: "Jane Smith", reg_no: "23/U/5678" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    color: Colors.cardTeal,
-    students: [
-      { id: 3, name: "Peter Okello", reg_no: "23/U/9101" },
-      { id: 4, name: "Mary Akello", reg_no: "23/U/1121" },
-    ],
-  },
-];
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.primary, Colors.accent];
 
 export default function GradingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
-  const [selectedCourse, setSelectedCourse] = useState<(typeof COURSES)[0] | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
-  const handleSelectCourse = (course: (typeof COURSES)[0]) => {
+  useEffect(() => {
+    if (!token) return;
+    setLoadingCourses(true);
+    lecturerAPI.getCourses(token)
+      .then((data) => setCourses(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoadingCourses(false));
+  }, [token]);
+
+  const handleSelectCourse = async (course: any) => {
     setSelectedCourse(course);
     setSelectedStudent(null);
+    setStudents([]);
+    if (!token) return;
+    setLoadingStudents(true);
+    try {
+      const data = await lecturerAPI.getCourseStudents(course.id, token);
+      setStudents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load students:", err);
+    } finally {
+      setLoadingStudents(false);
+    }
   };
 
   const handleStartGrading = () => {
     if (!selectedCourse || !selectedStudent) return;
     router.push({
       pathname: "/(lecturer)/grading/scan",
-      params: { courseId: selectedCourse.id, studentId: selectedStudent },
+      // Pass user_id because Grade.student_id references users.id
+      params: { courseId: selectedCourse.id, studentId: selectedStudent.user_id },
     });
   };
 
@@ -136,52 +144,62 @@ export default function GradingScreen() {
           <Text style={styles.sectionSub}>Choose the course you are grading for</Text>
         </View>
 
-        {COURSES.map((course) => {
-          const isActive = selectedCourse?.id === course.id;
-          return (
-            <TouchableOpacity
-              key={course.id}
-              style={[styles.courseCard, isActive && styles.courseCardActive]}
-              onPress={() => handleSelectCourse(course)}
-              activeOpacity={0.85}
-            >
-              {isActive && (
-                <LinearGradient
-                  colors={[Colors.primary, Colors.primaryDark]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
-              <View style={[styles.courseBar, { backgroundColor: isActive ? "rgba(255,255,255,0.35)" : course.color }]} />
-              <View style={[styles.courseIcon, { backgroundColor: isActive ? "rgba(255,255,255,0.18)" : course.color + "18" }]}>
-                <Ionicons name="book" size={20} color={isActive ? Colors.white : course.color} />
-              </View>
-              <View style={styles.courseInfo}>
-                <Text style={[styles.courseName, isActive && styles.whiteText]} numberOfLines={2}>
-                  {course.name}
-                </Text>
-                <View style={styles.courseMeta}>
-                  <View style={[styles.codePill, { backgroundColor: isActive ? "rgba(255,255,255,0.2)" : course.color + "18" }]}>
-                    <Text style={[styles.codePillText, { color: isActive ? Colors.white : course.color }]}>
-                      {course.code}
-                    </Text>
-                  </View>
-                  <View style={styles.metaRow}>
-                    <Ionicons name="people-outline" size={12} color={isActive ? "rgba(255,255,255,0.7)" : Colors.subtext} />
-                    <Text style={[styles.metaText, isActive && styles.whiteSubText]}>
-                      {course.students.length} students
-                    </Text>
+        {loadingCourses ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
+        ) : courses.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="book-outline" size={32} color={Colors.subtext} />
+            <Text style={styles.emptyText}>No courses found. Create a course first.</Text>
+          </View>
+        ) : (
+          courses.map((course, idx) => {
+            const isActive = selectedCourse?.id === course.id;
+            const color = COURSE_COLORS[idx % COURSE_COLORS.length];
+            return (
+              <TouchableOpacity
+                key={course.id}
+                style={[styles.courseCard, isActive && styles.courseCardActive]}
+                onPress={() => handleSelectCourse(course)}
+                activeOpacity={0.85}
+              >
+                {isActive && (
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
+                <View style={[styles.courseBar, { backgroundColor: isActive ? "rgba(255,255,255,0.35)" : color }]} />
+                <View style={[styles.courseIcon, { backgroundColor: isActive ? "rgba(255,255,255,0.18)" : color + "18" }]}>
+                  <Ionicons name="book" size={20} color={isActive ? Colors.white : color} />
+                </View>
+                <View style={styles.courseInfo}>
+                  <Text style={[styles.courseName, isActive && styles.whiteText]} numberOfLines={2}>
+                    {course.title}
+                  </Text>
+                  <View style={styles.courseMeta}>
+                    <View style={[styles.codePill, { backgroundColor: isActive ? "rgba(255,255,255,0.2)" : color + "18" }]}>
+                      <Text style={[styles.codePillText, { color: isActive ? Colors.white : color }]}>
+                        {course.code}
+                      </Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                      <Ionicons name="albums-outline" size={12} color={isActive ? "rgba(255,255,255,0.7)" : Colors.subtext} />
+                      <Text style={[styles.metaText, isActive && styles.whiteSubText]}>
+                        {course.units?.length ?? 0} unit{course.units?.length !== 1 ? "s" : ""}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-              {isActive
-                ? <View style={styles.checkCircle}><Ionicons name="checkmark" size={16} color={Colors.primary} /></View>
-                : <View style={styles.radioCircle} />
-              }
-            </TouchableOpacity>
-          );
-        })}
+                {isActive
+                  ? <View style={styles.checkCircle}><Ionicons name="checkmark" size={16} color={Colors.primary} /></View>
+                  : <View style={styles.radioCircle} />
+                }
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         {/* ── STEP 2 ── */}
         {selectedCourse && (
@@ -194,42 +212,51 @@ export default function GradingScreen() {
               <Text style={styles.sectionSub}>Students enrolled in {selectedCourse.code}</Text>
             </View>
 
-            {selectedCourse.students.map((student) => {
-              const isActive = selectedStudent === student.id;
-              return (
-                <TouchableOpacity
-                  key={student.id}
-                  style={[styles.studentCard, isActive && styles.studentCardActive]}
-                  onPress={() => setSelectedStudent(student.id)}
-                  activeOpacity={0.85}
-                >
-                  {isActive && (
-                    <LinearGradient
-                      colors={[Colors.primary, Colors.primaryDark]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  )}
-                  <View style={[styles.studentAvatar, isActive && styles.studentAvatarActive]}>
-                    <Text style={[styles.studentAvatarText, isActive && styles.whiteText]}>
-                      {student.name[0]}
-                    </Text>
-                  </View>
-                  <View style={styles.studentInfo}>
-                    <Text style={[styles.studentName, isActive && styles.whiteText]}>{student.name}</Text>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="card-outline" size={12} color={isActive ? "rgba(255,255,255,0.7)" : Colors.subtext} />
-                      <Text style={[styles.metaText, isActive && styles.whiteSubText]}>{student.reg_no}</Text>
+            {loadingStudents ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+            ) : students.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Ionicons name="people-outline" size={32} color={Colors.subtext} />
+                <Text style={styles.emptyText}>No students enrolled in this course.</Text>
+              </View>
+            ) : (
+              students.map((student) => {
+                const isActive = selectedStudent?.user_id === student.user_id;
+                return (
+                  <TouchableOpacity
+                    key={student.user_id}
+                    style={[styles.studentCard, isActive && styles.studentCardActive]}
+                    onPress={() => setSelectedStudent(student)}
+                    activeOpacity={0.85}
+                  >
+                    {isActive && (
+                      <LinearGradient
+                        colors={[Colors.primary, Colors.primaryDark]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                    )}
+                    <View style={[styles.studentAvatar, isActive && styles.studentAvatarActive]}>
+                      <Text style={[styles.studentAvatarText, isActive && styles.whiteText]}>
+                        {student.name?.[0] ?? "?"}
+                      </Text>
                     </View>
-                  </View>
-                  {isActive
-                    ? <View style={styles.checkCircle}><Ionicons name="checkmark" size={16} color={Colors.primary} /></View>
-                    : <View style={styles.radioCircle} />
-                  }
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={styles.studentInfo}>
+                      <Text style={[styles.studentName, isActive && styles.whiteText]}>{student.name}</Text>
+                      <View style={styles.metaRow}>
+                        <Ionicons name="card-outline" size={12} color={isActive ? "rgba(255,255,255,0.7)" : Colors.subtext} />
+                        <Text style={[styles.metaText, isActive && styles.whiteSubText]}>{student.student_id_number}</Text>
+                      </View>
+                    </View>
+                    {isActive
+                      ? <View style={styles.checkCircle}><Ionicons name="checkmark" size={16} color={Colors.primary} /></View>
+                      : <View style={styles.radioCircle} />
+                    }
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </>
         )}
 
@@ -251,7 +278,7 @@ export default function GradingScreen() {
                 </View>
                 <View style={styles.summaryInfo}>
                   <Text style={styles.summaryLabel}>Course</Text>
-                  <Text style={styles.summaryValue} numberOfLines={1}>{selectedCourse.name}</Text>
+                  <Text style={styles.summaryValue} numberOfLines={1}>{selectedCourse.title}</Text>
                 </View>
               </View>
               <View style={styles.summaryDivider} />
@@ -261,9 +288,7 @@ export default function GradingScreen() {
                 </View>
                 <View style={styles.summaryInfo}>
                   <Text style={styles.summaryLabel}>Student</Text>
-                  <Text style={styles.summaryValue}>
-                    {selectedCourse.students.find((s) => s.id === selectedStudent)?.name}
-                  </Text>
+                  <Text style={styles.summaryValue}>{selectedStudent.name}</Text>
                 </View>
               </View>
             </View>
@@ -343,6 +368,12 @@ const styles = StyleSheet.create({
   stepBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.primary },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text },
   sectionSub: { fontSize: FontSize.sm, color: Colors.subtext, marginTop: 2 },
+  emptyBox: {
+    alignItems: "center", padding: Spacing.xl,
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm,
+  },
+  emptyText: { fontSize: FontSize.sm, color: Colors.subtext, marginTop: Spacing.sm, textAlign: "center" },
   courseCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.surface, borderRadius: Radius.xl,

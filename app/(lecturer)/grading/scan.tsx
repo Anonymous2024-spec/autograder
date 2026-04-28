@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   StyleSheet,
   Text,
@@ -12,10 +13,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, FontSize, Radius, Spacing } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { gradingAPI, lecturerAPI } from "../../../services/api";
 
 export default function ScanScreen() {
   const router = useRouter();
   const { courseId, studentId } = useLocalSearchParams();
+  const { token, user } = useAuth();
 
   // Camera permission hook
   const [permission, requestPermission] = useCameraPermissions();
@@ -28,6 +32,19 @@ export default function ScanScreen() {
 
   // Track processing state after capture
   const [processing, setProcessing] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+
+  // Fetch all questions for this course across all units
+  const fetchQuestions = async () => {
+    if (!token || !courseId) return;
+    try {
+      const questionsData = await lecturerAPI.getCourseQuestions(Number(courseId), token);
+      setQuestions(Array.isArray(questionsData) ? questionsData : []);
+    } catch (err) {
+      console.error("Failed to fetch questions:", err);
+    }
+  };
 
   // Handle taking a picture
   const handleCapture = async () => {
@@ -41,6 +58,8 @@ export default function ScanScreen() {
 
       if (photo?.uri) {
         setCapturedImage(photo.uri);
+        // Fetch questions after capture
+        fetchQuestions();
       }
     } catch (err) {
       console.error("Failed to capture image:", err);
@@ -50,27 +69,47 @@ export default function ScanScreen() {
   // Discard captured image and retake
   const handleRetake = () => {
     setCapturedImage(null);
+    setSelectedQuestion(null);
+    setQuestions([]);
   };
 
   // Proceed to result screen with captured image
   const handleProceed = async () => {
-    if (!capturedImage) return;
+    if (!capturedImage || !selectedQuestion || !token) {
+      Alert.alert("Error", "Please select a question to grade");
+      return;
+    }
 
     setProcessing(true);
 
-    // TODO: Send capturedImage to Gemini API for OCR
-    // For now just navigate to result screen with image URI
-    setTimeout(() => {
+    try {
+      const filename = capturedImage.split("/").pop() || "answer.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      const result = await gradingAPI.gradeQuestion(
+        selectedQuestion.id,
+        Number(studentId),
+        { uri: capturedImage, name: filename, type } as any,
+        token
+      );
+
       setProcessing(false);
+
       router.push({
-        pathname: "/grading/result",
+        pathname: "/(lecturer)/grading/result",
         params: {
           courseId,
           studentId,
           imageUri: capturedImage,
+          gradingResult: JSON.stringify(result),
         },
       });
-    }, 1500);
+    } catch (err: any) {
+      console.error("Grading error:", err);
+      setProcessing(false);
+      Alert.alert("Error", err.message || "Failed to grade. Please try again.");
+    }
   };
 
   // ── Permission not yet determined ──
@@ -149,11 +188,35 @@ export default function ScanScreen() {
                   size={20}
                   color={Colors.white}
                 />
-                <Text style={styles.proceedBtnText}>Use This Scan</Text>
+                <Text style={styles.proceedBtnText}>Grade This</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Question selection - show after capture */}
+        {questions.length > 0 && (
+          <View style={styles.questionSelect}>
+            <Text style={styles.questionSelectTitle}>Select Question to Grade</Text>
+            {questions.map((q: any) => (
+              <TouchableOpacity
+                key={q.id}
+                style={[
+                  styles.questionOption,
+                  selectedQuestion?.id === q.id && styles.questionOptionActive,
+                ]}
+                onPress={() => setSelectedQuestion(q)}
+              >
+                <Text style={styles.questionOptionText}>
+                  {q.question_text || `Question ${q.id}`}
+                </Text>
+                <Text style={styles.questionOptionMarks}>
+                  {q.total_marks} marks
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -416,5 +479,44 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: "600",
     color: Colors.white,
+  },
+  
+  // Question selection
+  questionSelect: {
+    backgroundColor: Colors.white,
+    padding: Spacing.md,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    maxHeight: 200,
+  },
+  questionSelectTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  questionOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.xs,
+  },
+  questionOptionActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  questionOptionText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+  },
+  questionOptionMarks: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    fontWeight: "600",
   },
 });

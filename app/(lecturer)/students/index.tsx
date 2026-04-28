@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -19,69 +20,66 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
-// Mock students data - students in courses/units taught by lecturer
-const STUDENTS = [
-  {
-    id: 1,
-    name: "John Doe",
-    reg_no: "23/U/1234",
-    no: "2300712345",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    reg_no: "23/U/5678",
-    no: "2300756789",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 3,
-    name: "Peter Okello",
-    reg_no: "23/U/9101",
-    no: "2300791011",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 4,
-    name: "Mary Akello",
-    reg_no: "23/U/1121",
-    no: "2300711213",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 5,
-    name: "David Onen",
-    reg_no: "23/U/1415",
-    no: "2300714151",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-];
+const AVATAR_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function StudentsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const filtered = STUDENTS.filter((s) => {
-    const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.reg_no.toLowerCase().includes(search.toLowerCase()) ||
-      s.no.includes(search);
-    return matchSearch;
+  useEffect(() => {
+    if (!token) return;
+    loadStudents();
+  }, [token]);
+
+  const loadStudents = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const courses = await lecturerAPI.getCourses(token);
+      const seen = new Set<number>();
+      const allStudents: any[] = [];
+      for (const course of (courses ?? [])) {
+        try {
+          const courseStudents = await lecturerAPI.getCourseStudents(course.id, token);
+          for (const s of (courseStudents ?? [])) {
+            if (!seen.has(s.user_id)) {
+              seen.add(s.user_id);
+              allStudents.push({ ...s, courseCode: course.code, courseTitle: course.title });
+            }
+          }
+        } catch {
+          // skip courses with errors
+        }
+      }
+      setStudents(allStudents);
+    } catch (err) {
+      console.error("Failed to load students:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = students.filter((s) => {
+    const name = s.name ?? "";
+    const regNo = s.student_id_number ?? "";
+    return (
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      regNo.toLowerCase().includes(search.toLowerCase())
+    );
   });
 
-  const handleViewDetails = (id: number) => {
+  const handleViewDetails = (student: any) => {
     router.push({
       pathname: "/(lecturer)/students/detail",
-      params: { id },
+      params: { id: student.student_id, userId: student.user_id, name: student.name },
     });
   };
 
@@ -107,7 +105,7 @@ export default function StudentsScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>My Students</Text>
             <Text style={styles.headerSub}>
-              {STUDENTS.length} students in your courses
+              {students.length} student{students.length !== 1 ? "s" : ""} in your courses
             </Text>
           </View>
         </View>
@@ -122,7 +120,7 @@ export default function StudentsScreen() {
             value={search}
             onChangeText={setSearch}
           />
-          {search && (
+          {search ? (
             <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.6}>
               <Ionicons
                 name="close-circle"
@@ -130,78 +128,85 @@ export default function StudentsScreen() {
                 color={Colors.placeholder}
               />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       </LinearGradient>
 
       {/* Students List */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconBox}>
-              <Ionicons
-                name="person-outline"
-                size={40}
-                color={Colors.primary}
-              />
+      {loading ? (
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.user_id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconBox}>
+                <Ionicons
+                  name="person-outline"
+                  size={40}
+                  color={Colors.primary}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No students found</Text>
+              <Text style={styles.emptySubtext}>
+                {search ? "Try adjusting your search criteria" : "No students enrolled in your courses"}
+              </Text>
             </View>
-            <Text style={styles.emptyTitle}>No students found</Text>
-            <Text style={styles.emptySubtext}>
-              Try adjusting your search criteria
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.studentCard}
-            onPress={() => handleViewDetails(item.id)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.cardLeft}>
-              <View
-                style={[
-                  styles.avatarBox,
-                  { backgroundColor: item.courseColor + "20" },
-                ]}
+          }
+          renderItem={({ item, index }) => {
+            const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
+            return (
+              <TouchableOpacity
+                style={styles.studentCard}
+                onPress={() => handleViewDetails(item)}
+                activeOpacity={0.85}
               >
-                <Text style={[styles.avatarText, { color: item.courseColor }]}>
-                  {item.name.charAt(0)}
-                </Text>
-              </View>
-              <View style={styles.studentInfo}>
-                <Text style={styles.studentName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.studentMeta}>{item.reg_no}</Text>
-                <Text style={styles.studentNo}>{item.no}</Text>
-              </View>
-            </View>
-            <View style={styles.cardRight}>
-              <View
-                style={[
-                  styles.courseBadge,
-                  { backgroundColor: item.courseColor + "20" },
-                ]}
-              >
-                <Text
-                  style={[styles.courseBadgeText, { color: item.courseColor }]}
-                >
-                  {item.course}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.subtext}
-              />
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+                <View style={styles.cardLeft}>
+                  <View
+                    style={[
+                      styles.avatarBox,
+                      { backgroundColor: color + "20" },
+                    ]}
+                  >
+                    <Text style={[styles.avatarText, { color }]}>
+                      {(item.name ?? "?").charAt(0)}
+                    </Text>
+                  </View>
+                  <View style={styles.studentInfo}>
+                    <Text style={styles.studentName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.studentMeta}>{item.student_id_number}</Text>
+                    <Text style={styles.studentNo}>{item.email}</Text>
+                  </View>
+                </View>
+                <View style={styles.cardRight}>
+                  <View
+                    style={[
+                      styles.courseBadge,
+                      { backgroundColor: color + "20" },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.courseBadgeText, { color }]}
+                    >
+                      {item.courseCode}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={Colors.subtext}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -232,6 +237,9 @@ const styles = StyleSheet.create({
     left: -20,
   },
   headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
     marginBottom: Spacing.md,
   },
   backBtn: {
@@ -241,7 +249,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.md,
   },
   headerText: { flex: 1 },
   headerTitle: {
@@ -257,17 +264,18 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: Radius.full,
+    backgroundColor: Colors.white,
+    borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.sm + 2,
     gap: Spacing.sm,
+    ...Shadows.sm,
   },
   searchInput: {
     flex: 1,
     fontSize: FontSize.sm,
-    color: Colors.white,
-    paddingVertical: 8,
+    color: Colors.text,
+    paddingVertical: 0,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,

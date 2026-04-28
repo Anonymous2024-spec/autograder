@@ -149,14 +149,14 @@ export default function LecturerDashboard() {
             onPress={() => router.push({ pathname: "/(lecturer)/profile" })}
           >
             <Text style={styles.avatarText}>
-              {getInitials(user?.username ?? "LT")}
+              {getInitials(user?.full_name ?? "LT")}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
             <Text style={styles.headerLabel}>Signed in as</Text>
             <Text style={styles.headerName} numberOfLines={1}>
-              {user?.username ?? "Lecturer"}
+              {user?.full_name ?? "Lecturer"}
             </Text>
           </View>
 
@@ -176,7 +176,7 @@ export default function LecturerDashboard() {
         {/* Greeting */}
         <View style={styles.greetingSection}>
           <Text style={styles.greetingLine}>Good day 👋</Text>
-          <Text style={styles.greetingBig}>{user?.username ?? "Lecturer"}</Text>
+          <Text style={styles.greetingBig}>{user?.full_name ?? "Lecturer"}</Text>
           <View style={styles.rolePill}>
             <View style={styles.roleDot} />
             <Text style={styles.rolePillText}>Lecturer · Active</Text>

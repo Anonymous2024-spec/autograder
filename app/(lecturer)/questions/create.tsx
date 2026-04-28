@@ -1,21 +1,21 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// questions/create.tsx
-// ─────────────────────────────────────────────────────────────────────────────
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Input from "../../../components/Input";
 import {
   Colors,
   FontSize,
@@ -24,43 +24,92 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
-
-const LABELS = ["A", "B", "C", "D"];
-
-const LABEL_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
 export default function CreateQuestion() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
-  const [question, setQuestion] = useState("");
-  const [courseUnitId, setCourseUnitId] = useState("");
+  const [questionText, setQuestionText] = useState("");
+  const [totalMarks, setTotalMarks] = useState("10");
+  const [units, setUnits] = useState<any[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
+  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+  const [questionPdf, setQuestionPdf] = useState<any | null>(null);
+  const [markingGuidePdf, setMarkingGuidePdf] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
-  const [options, setOptions] = useState([
-    { id: 1, text: "", is_correct: false },
-    { id: 2, text: "", is_correct: false },
-    { id: 3, text: "", is_correct: false },
-    { id: 4, text: "", is_correct: false },
-  ]);
+  const [loadingUnits, setLoadingUnits] = useState(true);
 
-  const updateOptionText = (index: number, text: string) => {
-    const updated = [...options];
-    updated[index].text = text;
-    setOptions(updated);
+  useEffect(() => {
+    if (!token) return;
+    lecturerAPI.getCourses(token)
+      .then((courses) => {
+        const allUnits: any[] = [];
+        (courses ?? []).forEach((course: any) => {
+          (course.units ?? []).forEach((unit: any) => {
+            allUnits.push({ ...unit, courseCode: course.code, courseTitle: course.title });
+          });
+        });
+        setUnits(allUnits);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingUnits(false));
+  }, [token]);
+
+  const pickPdf = async (type: "question" | "marking") => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/jpeg", "image/png"],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const file = result.assets[0];
+        if (type === "question") setQuestionPdf(file);
+        else setMarkingGuidePdf(file);
+      }
+    } catch (err) {
+      console.error("Document pick error:", err);
+    }
   };
 
-  const markCorrect = (index: number) => {
-    setOptions(options.map((opt, i) => ({ ...opt, is_correct: i === index })));
-  };
+  const handleSubmit = async () => {
+    if (!selectedUnit) { Alert.alert("Missing", "Please select a course unit."); return; }
+    if (!questionText.trim() && !questionPdf) { Alert.alert("Missing", "Enter question text or upload a question PDF."); return; }
+    if (!markingGuidePdf) { Alert.alert("Missing", "A marking guide PDF is required for grading."); return; }
+    if (!token) return;
 
-  const correctIndex = options.findIndex((o) => o.is_correct);
-
-  const handleSubmit = () => {
-    if (!question || !courseUnitId) { alert("Please fill in the question and course unit"); return; }
-    if (options.some((opt) => !opt.text)) { alert("Please fill in all options"); return; }
-    if (!options.some((opt) => opt.is_correct)) { alert("Please mark the correct answer"); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); router.back(); }, 1000);
+    try {
+      const questionData: any = {
+        question_text: questionText,
+        total_marks: parseInt(totalMarks) || 10,
+      };
+      if (questionPdf) {
+        questionData.question_pdf = {
+          uri: questionPdf.uri,
+          name: questionPdf.name,
+          type: questionPdf.mimeType || "application/pdf",
+        };
+      }
+      if (markingGuidePdf) {
+        questionData.marking_guide_pdf = {
+          uri: markingGuidePdf.uri,
+          name: markingGuidePdf.name,
+          type: markingGuidePdf.mimeType || "application/pdf",
+        };
+      }
+
+      await lecturerAPI.createQuestion(selectedUnit.id, questionData, token);
+      Alert.alert("Success", "Question created successfully!", [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to create question");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,26 +132,8 @@ export default function CreateQuestion() {
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>New Question</Text>
-            <Text style={styles.headerSub}>Add a question and mark the correct answer</Text>
+            <Text style={styles.headerSub}>Upload marking guide for AI grading</Text>
           </View>
-        </View>
-        {/* Answer indicator pill */}
-        <View style={styles.answerPill}>
-          {correctIndex >= 0 ? (
-            <>
-              <View style={[styles.answerPillDot, { backgroundColor: LABEL_COLORS[correctIndex] }]} />
-              <Text style={styles.answerPillText}>
-                Correct answer: Option {LABELS[correctIndex]}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="alert-circle-outline" size={13} color="rgba(255,255,255,0.6)" />
-              <Text style={[styles.answerPillText, { color: "rgba(255,255,255,0.6)" }]}>
-                No correct answer marked yet
-              </Text>
-            </>
-          )}
         </View>
       </LinearGradient>
 
@@ -111,99 +142,118 @@ export default function CreateQuestion() {
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Question section ── */}
-        <Text style={styles.sectionLabel}>Question Details</Text>
-        <View style={styles.formCard}>
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
-              <Ionicons name="book-outline" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.fieldInput}>
-              <Input
-                label="Course Unit ID"
-                placeholder="e.g. 1"
-                value={courseUnitId}
-                onChangeText={setCourseUnitId}
-                keyboardType="numeric"
-                icon="book-outline"
-              />
-            </View>
-          </View>
-          <View style={styles.fieldDivider} />
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
-              <Ionicons name="help-circle-outline" size={18} color={Colors.accent} />
-            </View>
-            <View style={styles.fieldInput}>
-              <Input
-                label="Question"
-                placeholder="Enter your MCQ question here..."
-                value={question}
-                onChangeText={setQuestion}
-                icon="help-circle-outline"
-                multiline
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* ── Options section ── */}
-        <Text style={styles.sectionLabel}>Answer Options</Text>
-        <Text style={styles.optionsHint}>
-          Tap the radio button to mark the correct answer
-        </Text>
-
-        {options.map((opt, index) => {
-          const isCorrect = opt.is_correct;
-          const color = LABEL_COLORS[index];
-          return (
-            <View
-              key={opt.id}
-              style={[
-                styles.optionCard,
-                isCorrect && { borderColor: color, backgroundColor: color + "08" },
-              ]}
-            >
-              {/* Correct answer bar */}
-              {isCorrect && <View style={[styles.optionBar, { backgroundColor: color }]} />}
-
-              <View style={styles.optionContent}>
-                {/* Label + Radio row */}
-                <View style={styles.optionTop}>
-                  <View style={[styles.optionLabelBox, { backgroundColor: isCorrect ? color : Colors.border }]}>
-                    <Text style={styles.optionLetter}>{LABELS[index]}</Text>
-                  </View>
-                  <Text style={[styles.optionHint, isCorrect && { color }]}>
-                    {isCorrect ? "✓ Correct answer" : `Option ${LABELS[index]}`}
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.radioBtn, isCorrect && { borderColor: color }]}
-                    onPress={() => markCorrect(index)}
-                  >
-                    {isCorrect && <View style={[styles.radioDot, { backgroundColor: color }]} />}
-                  </TouchableOpacity>
-                </View>
-
-                {/* Input */}
-                <View style={styles.optionInputWrap}>
-                  <Input
-                    label=""
-                    placeholder={`Type option ${LABELS[index]} here...`}
-                    value={opt.text}
-                    onChangeText={(text) => updateOptionText(index, text)}
-                  />
-                </View>
-              </View>
-            </View>
-          );
-        })}
-
-        <View style={styles.infoNote}>
-          <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
-          <Text style={styles.infoNoteText}>
-            Students will see these options on the printed answer sheet. Make sure each option is clear.
+        {/* Unit picker */}
+        <Text style={styles.sectionLabel}>Course Unit</Text>
+        <TouchableOpacity
+          style={styles.pickerTrigger}
+          onPress={() => setUnitPickerOpen(!unitPickerOpen)}
+        >
+          <Ionicons name="layers-outline" size={18} color={Colors.subtext} />
+          <Text style={[styles.pickerText, !selectedUnit && styles.pickerPlaceholder]}>
+            {selectedUnit ? `${selectedUnit.title} (${selectedUnit.courseCode})` : "Select a unit..."}
           </Text>
+          <Ionicons name={unitPickerOpen ? "chevron-up" : "chevron-down"} size={18} color={Colors.subtext} />
+        </TouchableOpacity>
+
+        {unitPickerOpen && (
+          <View style={styles.dropdown}>
+            {loadingUnits ? (
+              <ActivityIndicator color={Colors.primary} style={{ padding: Spacing.md }} />
+            ) : units.length === 0 ? (
+              <Text style={styles.emptyText}>No units found. Create a course first.</Text>
+            ) : (
+              units.map((unit) => (
+                <TouchableOpacity
+                  key={unit.id}
+                  style={[styles.dropdownItem, selectedUnit?.id === unit.id && styles.dropdownItemActive]}
+                  onPress={() => { setSelectedUnit(unit); setUnitPickerOpen(false); }}
+                >
+                  <Text style={styles.dropdownItemText}>{unit.title}</Text>
+                  <Text style={styles.dropdownItemSub}>{unit.courseCode}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* Question text */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>Question Text</Text>
+        <View style={styles.textAreaCard}>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Enter the question text (or leave blank if uploading a PDF)..."
+            placeholderTextColor={Colors.placeholder}
+            value={questionText}
+            onChangeText={setQuestionText}
+            multiline
+            numberOfLines={4}
+          />
         </View>
+
+        {/* Total marks */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Total Marks</Text>
+        <View style={styles.marksCard}>
+          <Ionicons name="star-outline" size={18} color={Colors.accent} />
+          <TextInput
+            style={styles.marksInput}
+            placeholder="10"
+            placeholderTextColor={Colors.placeholder}
+            value={totalMarks}
+            onChangeText={setTotalMarks}
+            keyboardType="numeric"
+          />
+          <Text style={styles.marksUnit}>marks</Text>
+        </View>
+
+        {/* Question PDF (optional) */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Question Paper (Optional)</Text>
+        <TouchableOpacity style={styles.uploadBox} onPress={() => pickPdf("question")}>
+          {questionPdf ? (
+            <View style={styles.uploadedFile}>
+              <Ionicons name="document" size={24} color={Colors.primary} />
+              <Text style={styles.uploadedName} numberOfLines={1}>{questionPdf.name}</Text>
+              <TouchableOpacity onPress={() => setQuestionPdf(null)}>
+                <Ionicons name="close-circle" size={20} color={Colors.error} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.uploadPlaceholder}>
+              <Ionicons name="cloud-upload-outline" size={28} color={Colors.subtext} />
+              <Text style={styles.uploadPlaceholderText}>Tap to upload question PDF</Text>
+              <Text style={styles.uploadHint}>PDF, JPG, PNG supported</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Marking guide PDF (required) */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>
+          Marking Guide PDF <Text style={{ color: Colors.error }}>*</Text>
+        </Text>
+        <Text style={styles.uploadDesc}>
+          This is sent to AI for grading. It must contain the correct answers and marks per question.
+        </Text>
+        <TouchableOpacity
+          style={[styles.uploadBox, { borderColor: markingGuidePdf ? Colors.success : Colors.primary + "50" }]}
+          onPress={() => pickPdf("marking")}
+        >
+          {markingGuidePdf ? (
+            <View style={styles.uploadedFile}>
+              <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
+              <Text style={styles.uploadedName} numberOfLines={1}>{markingGuidePdf.name}</Text>
+              <TouchableOpacity onPress={() => setMarkingGuidePdf(null)}>
+                <Ionicons name="close-circle" size={20} color={Colors.error} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.uploadPlaceholder}>
+              <Ionicons name="document-text-outline" size={28} color={Colors.primary} />
+              <Text style={[styles.uploadPlaceholderText, { color: Colors.primary }]}>
+                Upload Marking Guide (Required)
+              </Text>
+              <Text style={styles.uploadHint}>PDF, JPG, PNG supported</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Bottom bar ── */}
@@ -224,7 +274,7 @@ export default function CreateQuestion() {
             style={styles.submitGradient}
           >
             {loading ? (
-              <Text style={styles.submitBtnText}>Saving...</Text>
+              <ActivityIndicator color={Colors.white} size="small" />
             ) : (
               <>
                 <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
@@ -249,7 +299,7 @@ const styles = StyleSheet.create({
     position: "absolute", width: 100, height: 100, borderRadius: 50,
     backgroundColor: "rgba(255,255,255,0.05)", bottom: -20, left: -20,
   },
-  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
+  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
@@ -258,80 +308,81 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
   headerSub: { fontSize: FontSize.sm, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  answerPill: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: Radius.full,
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.md, paddingVertical: 5, gap: 6,
-  },
-  answerPillDot: { width: 8, height: 8, borderRadius: 4 },
-  answerPillText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.white },
   body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
   sectionLabel: {
     fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
-    textTransform: "uppercase", letterSpacing: 1.2,
-    marginBottom: Spacing.sm, marginTop: Spacing.md,
+    textTransform: "uppercase", letterSpacing: 1.2, marginBottom: Spacing.sm,
   },
-  optionsHint: { fontSize: FontSize.sm, color: Colors.subtext, marginBottom: Spacing.md },
-  formCard: {
-    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+  pickerTrigger: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Colors.surface, borderRadius: Radius.lg,
     borderWidth: 1, borderColor: Colors.border,
-    overflow: "hidden", ...Shadows.sm, marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+    gap: Spacing.sm, ...Shadows.sm,
   },
-  fieldRow: {
-    flexDirection: "row", alignItems: "flex-start",
-    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.md,
+  pickerText: { flex: 1, fontSize: FontSize.sm, color: Colors.text },
+  pickerPlaceholder: { color: Colors.placeholder },
+  dropdown: {
+    backgroundColor: Colors.surface, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, ...Shadows.md,
+    marginTop: 4, overflow: "hidden",
   },
-  fieldIcon: {
-    width: 38, height: 38, borderRadius: Radius.md,
-    justifyContent: "center", alignItems: "center", marginTop: Spacing.lg + 2,
+  dropdownItem: {
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  fieldInput: { flex: 1 },
-  fieldDivider: { height: 1, backgroundColor: Colors.border, marginLeft: Spacing.md + 38 + Spacing.md },
-
-  // Option cards
-  optionCard: {
-    flexDirection: "row",
+  dropdownItemActive: { backgroundColor: Colors.primaryLight },
+  dropdownItemText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
+  dropdownItemSub: { fontSize: FontSize.xs, color: Colors.subtext, marginTop: 2 },
+  emptyText: { padding: Spacing.md, color: Colors.subtext, textAlign: "center" },
+  textAreaCard: {
+    backgroundColor: Colors.surface, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
+  },
+  textArea: {
+    padding: Spacing.md, fontSize: FontSize.sm, color: Colors.text,
+    minHeight: 100, textAlignVertical: "top",
+  },
+  marksCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Colors.surface, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.md, gap: Spacing.sm, ...Shadows.sm,
+  },
+  marksInput: {
+    flex: 1, fontSize: FontSize.lg, fontWeight: FontWeight.bold,
+    color: Colors.text, paddingVertical: Spacing.md,
+  },
+  marksUnit: { fontSize: FontSize.sm, color: Colors.subtext },
+  uploadDesc: { fontSize: FontSize.xs, color: Colors.subtext, marginBottom: Spacing.sm },
+  uploadBox: {
     backgroundColor: Colors.surface, borderRadius: Radius.xl,
-    borderWidth: 1.5, borderColor: Colors.border,
-    marginBottom: Spacing.sm, overflow: "hidden", ...Shadows.sm,
+    borderWidth: 1.5, borderColor: Colors.border, borderStyle: "dashed",
+    overflow: "hidden", ...Shadows.sm,
   },
-  optionBar: { width: 4 },
-  optionContent: { flex: 1, padding: Spacing.md },
-  optionTop: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm, gap: Spacing.sm },
-  optionLabelBox: {
-    width: 28, height: 28, borderRadius: Radius.sm,
-    justifyContent: "center", alignItems: "center",
+  uploadPlaceholder: {
+    alignItems: "center", padding: Spacing.xl, gap: Spacing.sm,
   },
-  optionLetter: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.white },
-  optionHint: { flex: 1, fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.subtext },
-  radioBtn: {
-    width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: Colors.border,
-    justifyContent: "center", alignItems: "center",
+  uploadPlaceholderText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.subtext },
+  uploadHint: { fontSize: FontSize.xs, color: Colors.placeholder },
+  uploadedFile: {
+    flexDirection: "row", alignItems: "center",
+    padding: Spacing.md, gap: Spacing.md,
   },
-  radioDot: { width: 10, height: 10, borderRadius: 5 },
-  optionInputWrap: { marginTop: -Spacing.xs },
-  infoNote: {
-    flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
-    backgroundColor: Colors.primaryLight, borderRadius: Radius.lg,
-    padding: Spacing.md, marginTop: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.primary + "20",
-  },
-  infoNoteText: { flex: 1, fontSize: FontSize.xs, color: Colors.primary, lineHeight: 18 },
+  uploadedName: { flex: 1, fontSize: FontSize.sm, color: Colors.text, fontWeight: FontWeight.medium },
   bottomBar: {
     flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
     backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
     gap: Spacing.md, ...Shadows.md,
   },
   cancelBtn: {
-    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
+    flex: 1, alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: Colors.border,
     borderRadius: Radius.lg, paddingVertical: Spacing.md,
-    alignItems: "center", justifyContent: "center",
   },
   cancelBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
   submitBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
-  submitBtnDisabled: { opacity: 0.7 },
+  submitBtnDisabled: { opacity: 0.6 },
   submitGradient: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     paddingVertical: Spacing.md, gap: Spacing.sm,
