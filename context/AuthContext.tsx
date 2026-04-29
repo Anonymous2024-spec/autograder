@@ -59,8 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setError(null);
-    setLoading(true);
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -74,10 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      
+
       setToken(data.access_token);
       setUser(data.user);
-      
+
       try {
         await SecureStore.setItemAsync("token", data.access_token);
         await SecureStore.setItemAsync("user", JSON.stringify(data.user));
@@ -88,8 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const errorMessage = err.message || "Login failed. Please try again.";
       setError(errorMessage);
       throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
