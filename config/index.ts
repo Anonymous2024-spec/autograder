@@ -13,9 +13,9 @@
 // export const API_BASE_URL = "http://10.0.2.2:3000/api";
 
 // Physical device on WiFi (machine's LAN IP):
-export const API_BASE_URL = "http://192.168.8.196:3000/api";
+// export const API_BASE_URL = "http://192.168.8.196:3000/api";
 
-// export const API_BASE_URL = "http://31.97.44.199:3000/api";
+export const API_BASE_URL = "http://31.97.44.199:3000/api";
 
 // Timeout for API requests (in milliseconds)
 export const API_TIMEOUT = 30000;
