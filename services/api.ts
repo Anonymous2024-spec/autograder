@@ -408,6 +408,9 @@ export const lecturerAPI = {
 
     return response.json();
   },
+
+  getStudentGrades: (studentId: number, token: string) =>
+    apiCall(`/lecturer/students/${studentId}/grades`, { token }),
 };
 
 // ============ STUDENT ENDPOINTS ============
