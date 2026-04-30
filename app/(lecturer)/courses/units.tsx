@@ -56,11 +56,22 @@ export default function CourseUnitsScreen() {
     });
   };
 
+  const handleUploadGuide = (unit: any) => {
+    router.push({
+      pathname: "/(lecturer)/courses/units/upload-guide",
+      params: { unitId: unit.id, unitName: unit.title },
+    });
+  };
+
   const handleOptions = (unit: any) => {
     Alert.alert(unit.title, "What would you like to do?", [
       {
         text: "View Questions",
         onPress: () => handleViewQuestions(unit),
+      },
+      {
+        text: "Upload Marking Guide",
+        onPress: () => handleUploadGuide(unit),
       },
       { text: "Cancel", style: "cancel" },
     ]);
@@ -194,6 +205,16 @@ export default function CourseUnitsScreen() {
                         Unit {item.order}
                       </Text>
                     </View>
+                    {item.marking_guide_path && (
+                      <View style={styles.guideBadge}>
+                        <Ionicons
+                          name="document-text"
+                          size={10}
+                          color={Colors.success}
+                        />
+                        <Text style={styles.guideBadgeText}>Guide</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -349,6 +370,20 @@ const styles = StyleSheet.create({
   questionCountText: {
     fontSize: FontSize.xs,
     color: Colors.subtext,
+  },
+  guideBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: Colors.successLight,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
+  guideBadgeText: {
+    fontSize: FontSize.xs - 1,
+    fontWeight: FontWeight.bold,
+    color: Colors.success,
   },
   menuBtn: { padding: Spacing.xs },
   emptyContainer: {

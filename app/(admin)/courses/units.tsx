@@ -91,6 +91,14 @@ export default function AdminCourseUnitsScreen() {
           }),
       },
       {
+        text: "Upload Marking Guide",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/courses/units/upload-guide",
+            params: { unitId: unit.id, unitName: unit.name },
+          }),
+      },
+      {
         text: "Delete",
         style: "destructive",
         onPress: () => confirmDelete(unit.id),

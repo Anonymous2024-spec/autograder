@@ -240,6 +240,38 @@ export const adminAPI = {
 
   deleteQuestion: (questionId: number, token: string) =>
     apiCall(`/admin/questions/${questionId}`, { method: "DELETE", token }),
+
+  uploadUnitMarkingGuide: async (
+    unitId: number,
+    pdfUri: string,
+    pdfName: string,
+    token: string
+  ) => {
+    const formData = new FormData();
+    formData.append("marking_guide_pdf", {
+      uri: pdfUri,
+      name: pdfName,
+      type: "application/pdf",
+    } as any);
+
+    const response = await fetch(
+      `${API_BASE_URL}/admin/units/${unitId}/marking-guide`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to upload marking guide");
+    }
+
+    return response.json();
+  },
 };
 
 // ============ LECTURER ENDPOINTS ============
@@ -289,9 +321,6 @@ export const lecturerAPI = {
 
     if (questionData.question_pdf) {
       formData.append("question_pdf", questionData.question_pdf);
-    }
-    if (questionData.marking_guide_pdf) {
-      formData.append("marking_guide_pdf", questionData.marking_guide_pdf);
     }
 
     const response = await fetch(`${API_BASE_URL}/lecturer/questions`, {
@@ -346,6 +375,38 @@ export const lecturerAPI = {
 
   deleteQuestion: (questionId: number, token: string) =>
     apiCall(`/lecturer/question/${questionId}`, { method: "DELETE", token }),
+
+  uploadUnitMarkingGuide: async (
+    unitId: number,
+    pdfUri: string,
+    pdfName: string,
+    token: string
+  ) => {
+    const formData = new FormData();
+    formData.append("marking_guide_pdf", {
+      uri: pdfUri,
+      name: pdfName,
+      type: "application/pdf",
+    } as any);
+
+    const response = await fetch(
+      `${API_BASE_URL}/lecturer/unit/${unitId}/marking-guide`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to upload marking guide");
+    }
+
+    return response.json();
+  },
 };
 
 // ============ STUDENT ENDPOINTS ============
