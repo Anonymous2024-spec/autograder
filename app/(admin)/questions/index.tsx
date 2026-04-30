@@ -44,6 +44,11 @@ interface Question {
   id: number;
   question_text?: string;
   unit_id: number;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  correct_answer?: string;
 }
 
 const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
@@ -112,9 +117,31 @@ export default function AdminQuestionsScreen() {
     setCoursePickerOpen(false);
   };
 
-  const handleSelectUnit = (unit: CourseUnit) => {
+  const handleSelectUnit = async (unit: CourseUnit) => {
     setSelectedUnit(unit);
     setUnitPickerOpen(false);
+    
+    // Fetch questions for this unit
+    if (token) {
+      try {
+        console.log(`Fetching questions for unit ${unit.id}...`);
+        const questionsList = await adminAPI.getUnitQuestions(unit.id, token);
+        const questionsArray = Array.isArray(questionsList) ? questionsList : [];
+        console.log(`Fetched ${questionsArray.length} questions`);
+        // Store questions in the selected unit
+        setSelectedUnit({ ...unit, questions: questionsArray });
+      } catch (error: any) {
+        console.error("Error fetching questions:", error);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        Alert.alert(
+          "Error", 
+          `Failed to load questions: ${error.message || "Unknown error"}. Please ensure the backend is running.`,
+          [{ text: "OK" }]
+        );
+        setSelectedUnit({ ...unit, questions: [] });
+      }
+    }
   };
 
   const handleGenerateSheet = () => {
@@ -155,13 +182,26 @@ export default function AdminQuestionsScreen() {
     ]);
   };
 
-  const confirmDelete = (id: number) => {
+  const confirmDelete = async (id: number) => {
     Alert.alert("Delete Question", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => console.log("Delete:", id),
+        onPress: async () => {
+          if (!token) return;
+          try {
+            await adminAPI.deleteQuestion(id, token);
+            // Refresh questions
+            if (selectedUnit) {
+              const questionsList = await adminAPI.getUnitQuestions(selectedUnit.id, token);
+              const questionsArray = Array.isArray(questionsList) ? questionsList : [];
+              setSelectedUnit({ ...selectedUnit, questions: questionsArray });
+            }
+          } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to delete question");
+          }
+        },
       },
     ]);
   };
@@ -198,7 +238,11 @@ export default function AdminQuestionsScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/(admin)/questions/create",
-                  params: { unitId: selectedUnit.id },
+                  params: { 
+                    unitId: selectedUnit.id.toString(),
+                    unitName: selectedUnit.title,
+                    unitCode: selectedUnit.description || "",
+                  },
                 })
               }
             >

@@ -192,6 +192,54 @@ export const adminAPI = {
 
   deleteCourseUnit: (unitId: number, token: string) =>
     apiCall(`/admin/units/${unitId}`, { method: "DELETE", token }),
+
+  // Questions
+  getUnitQuestions: (unitId: number, token: string) =>
+    apiCall(`/admin/units/${unitId}/questions`, { token }),
+
+  getQuestion: (questionId: number, token: string) =>
+    apiCall(`/admin/questions/${questionId}`, { token }),
+
+  createQuestion: (
+    unitId: number,
+    data: {
+      question_text?: string;
+      total_marks?: number;
+      option_a?: string;
+      option_b?: string;
+      option_c?: string;
+      option_d?: string;
+      correct_answer?: string;
+    },
+    token: string
+  ) =>
+    apiCall(`/admin/units/${unitId}/questions`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  updateQuestion: (
+    questionId: number,
+    data: {
+      question_text?: string;
+      total_marks?: number;
+      option_a?: string;
+      option_b?: string;
+      option_c?: string;
+      option_d?: string;
+      correct_answer?: string;
+    },
+    token: string
+  ) =>
+    apiCall(`/admin/questions/${questionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  deleteQuestion: (questionId: number, token: string) =>
+    apiCall(`/admin/questions/${questionId}`, { method: "DELETE", token }),
 };
 
 // ============ LECTURER ENDPOINTS ============
