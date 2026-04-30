@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +19,8 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { gradingAPI } from "../../../services/api";
 
 type QuestionResult = {
   question_number: number;
@@ -49,21 +53,45 @@ function getGradeStyle(percentage: number) {
 export default function GradeResult() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { unitId, unitName, studentName, gradingResult: gradingResultRaw } = useLocalSearchParams();
+  const { token } = useAuth();
+  const { gradeId, unitName, studentName } = useLocalSearchParams();
 
-  // Parse grading result from navigation params
-  let gradingData: GradingResult | null = null;
-  let parseError = false;
-  try {
-    const parsed = typeof gradingResultRaw === "string" ? JSON.parse(gradingResultRaw) : null;
-    // The backend returns { grade: {...}, grading_result: {...} }
-    gradingData = parsed?.grading_result ?? parsed;
-    if (!gradingData?.questions) parseError = true;
-  } catch {
-    parseError = true;
+  const [loading, setLoading] = useState(true);
+  const [gradingData, setGradingData] = useState<GradingResult | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!token || !gradeId) return;
+    setLoading(true);
+    gradingAPI.getGrade(Number(gradeId), token)
+      .then((data: any) => {
+        console.log("GET grade response:", JSON.stringify(data).substring(0, 200));
+        if (data?.grading_result) {
+          setGradingData(data.grading_result);
+        } else {
+          console.log("No grading_result in response, data keys:", Object.keys(data || {}));
+          setError(true);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load grade:", err);
+        setError(true);
+      })
+      .finally(() => setLoading(false));
+  }, [token, gradeId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ color: Colors.subtext, marginTop: Spacing.md, fontSize: FontSize.sm }}>
+          Loading grading result...
+        </Text>
+      </View>
+    );
   }
 
-  if (parseError || !gradingData) {
+  if (error || !gradingData) {
     return (
       <View style={[styles.root, { justifyContent: "center", alignItems: "center" }]}>
         <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
@@ -241,7 +269,7 @@ export default function GradeResult() {
         })}
       </ScrollView>
 
-      {/* ── Sticky bottom bar — grade already saved by backend ── */}
+      {/* ── Sticky bottom bar ── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
         <View style={styles.savedBadge}>
           <Ionicons name="checkmark-circle" size={18} color={Colors.success} />

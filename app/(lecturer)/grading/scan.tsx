@@ -60,7 +60,7 @@ export default function ScanScreen() {
     try {
       const filename = capturedImage.split("/").pop() || "answer.jpg";
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
+      const type = match && match[1].toLowerCase() === "jpg" ? "image/jpeg" : match ? `image/${match[1]}` : "image/jpeg";
 
       const result = await gradingAPI.gradeUnit(
         Number(unitId),
@@ -74,11 +74,9 @@ export default function ScanScreen() {
       router.push({
         pathname: "/(lecturer)/grading/result",
         params: {
-          unitId,
+          gradeId: result.grade.id,
           unitName,
           studentName,
-          imageUri: capturedImage,
-          gradingResult: JSON.stringify(result),
         },
       });
     } catch (err: any) {

@@ -41,7 +41,8 @@ export async function apiCall(
   if (!text) return null;
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (e) {
+    console.error("JSON parse error in apiCall for", endpoint, "text preview:", text.substring(0, 300));
     return text;
   }
 }
@@ -452,6 +453,8 @@ export const gradingAPI = {
     return response.json();
   },
 
-  getGrade: (gradeId: number, token: string) =>
-    apiCall(`/grade/${gradeId}`, { token }),
+  getGrade: async (gradeId: number, token: string) => {
+    const result = await apiCall(`/grade/${gradeId}`, { token });
+    return result;
+  },
 };
