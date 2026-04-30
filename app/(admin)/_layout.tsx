@@ -6,13 +6,15 @@ export default function AdminLayout() {
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
 
-      {/* students/index.tsx → name is "students" */}
+      {/* students */}
       <Stack.Screen
         name="students"
         options={{ headerShown: true, title: "Students" }}
       />
       <Stack.Screen name="students/register" options={{ headerShown: false }} />
       <Stack.Screen name="students/edit" options={{ headerShown: false }} />
+      <Stack.Screen name="students/enroll" options={{ headerShown: false }} />
+      <Stack.Screen name="students/detail" options={{ headerShown: false }} />
 
       {/* staff/index.tsx → name is "staff" */}
       <Stack.Screen

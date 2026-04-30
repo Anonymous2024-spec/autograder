@@ -66,6 +66,18 @@ export default function StudentsScreen() {
           }),
       },
       {
+        text: "Enroll",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/students/enroll",
+            params: {
+              id: student.id.toString(),
+              name: student.user?.full_name ?? "",
+              regNo: student.student_id_number ?? "",
+            },
+          }),
+      },
+      {
         text: "Edit",
         onPress: () =>
           router.push({
