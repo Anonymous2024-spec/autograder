@@ -22,37 +22,49 @@ import {
 import { useAuth } from "../../../context/AuthContext";
 import { lecturerAPI } from "../../../services/api";
 
-const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.primary, Colors.accent];
+const UNIT_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.primary, Colors.accent];
 
 export default function GradingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
 
-  const [courses, setCourses] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
-  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingUnits, setLoadingUnits] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [guideStatus, setGuideStatus] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!token) return;
-    setLoadingCourses(true);
+    setLoadingUnits(true);
     lecturerAPI.getCourses(token)
-      .then((data) => setCourses(Array.isArray(data) ? data : []))
+      .then((courses) => {
+        const allUnits: any[] = [];
+        (courses ?? []).forEach((course: any) => {
+          (course.units ?? []).forEach((unit: any) => {
+            allUnits.push({ ...unit, courseCode: course.code, courseTitle: course.title, courseId: course.id });
+          });
+        });
+        setUnits(allUnits);
+        const status: Record<number, boolean> = {};
+        allUnits.forEach((u) => { status[u.id] = !!u.marking_guide_path; });
+        setGuideStatus(status);
+      })
       .catch(console.error)
-      .finally(() => setLoadingCourses(false));
+      .finally(() => setLoadingUnits(false));
   }, [token]);
 
-  const handleSelectCourse = async (course: any) => {
-    setSelectedCourse(course);
+  const handleSelectUnit = async (unit: any) => {
+    setSelectedUnit(unit);
     setSelectedStudent(null);
     setStudents([]);
     if (!token) return;
     setLoadingStudents(true);
     try {
-      const data = await lecturerAPI.getCourseStudents(course.id, token);
+      const data = await lecturerAPI.getCourseStudents(unit.courseId, token);
       setStudents(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load students:", err);
@@ -62,15 +74,19 @@ export default function GradingScreen() {
   };
 
   const handleStartGrading = () => {
-    if (!selectedCourse || !selectedStudent) return;
+    if (!selectedUnit || !selectedStudent) return;
     router.push({
       pathname: "/(lecturer)/grading/scan",
-      // Pass user_id because Grade.student_id references users.id
-      params: { courseId: selectedCourse.id, studentId: selectedStudent.user_id },
+      params: {
+        unitId: selectedUnit.id,
+        unitName: selectedUnit.title,
+        studentId: selectedStudent.user_id,
+        studentName: selectedStudent.name,
+      },
     });
   };
 
-  const currentStep = !selectedCourse ? 1 : !selectedStudent ? 2 : 3;
+  const currentStep = !selectedUnit ? 1 : !selectedStudent ? 2 : 3;
 
   return (
     <View style={styles.root}>
@@ -90,14 +106,14 @@ export default function GradingScreen() {
           </View>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Grade Students</Text>
-            <Text style={styles.headerSub}>Select course and student to begin</Text>
+            <Text style={styles.headerSub}>Select unit and student to begin</Text>
           </View>
         </View>
 
         {/* Step indicator */}
         <View style={styles.stepsRow}>
           {[
-            { n: 1, label: "Course" },
+            { n: 1, label: "Unit" },
             { n: 2, label: "Student" },
             { n: 3, label: "Scan" },
           ].map((s, i, arr) => {
@@ -140,26 +156,27 @@ export default function GradingScreen() {
           <View style={styles.stepBadge}>
             <Text style={styles.stepBadgeText}>Step 1</Text>
           </View>
-          <Text style={styles.sectionTitle}>Select Course</Text>
-          <Text style={styles.sectionSub}>Choose the course you are grading for</Text>
+          <Text style={styles.sectionTitle}>Select Course Unit</Text>
+          <Text style={styles.sectionSub}>Choose the unit you are grading for</Text>
         </View>
 
-        {loadingCourses ? (
+        {loadingUnits ? (
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
-        ) : courses.length === 0 ? (
+        ) : units.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="book-outline" size={32} color={Colors.subtext} />
-            <Text style={styles.emptyText}>No courses found. Create a course first.</Text>
+            <Ionicons name="layers-outline" size={32} color={Colors.subtext} />
+            <Text style={styles.emptyText}>No units found. Create a course with units first.</Text>
           </View>
         ) : (
-          courses.map((course, idx) => {
-            const isActive = selectedCourse?.id === course.id;
-            const color = COURSE_COLORS[idx % COURSE_COLORS.length];
+          units.map((unit, idx) => {
+            const isActive = selectedUnit?.id === unit.id;
+            const color = UNIT_COLORS[idx % UNIT_COLORS.length];
+            const hasGuide = guideStatus[unit.id];
             return (
               <TouchableOpacity
-                key={course.id}
-                style={[styles.courseCard, isActive && styles.courseCardActive]}
-                onPress={() => handleSelectCourse(course)}
+                key={unit.id}
+                style={[styles.unitCard, isActive && styles.unitCardActive]}
+                onPress={() => handleSelectUnit(unit)}
                 activeOpacity={0.85}
               >
                 {isActive && (
@@ -170,24 +187,28 @@ export default function GradingScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                 )}
-                <View style={[styles.courseBar, { backgroundColor: isActive ? "rgba(255,255,255,0.35)" : color }]} />
-                <View style={[styles.courseIcon, { backgroundColor: isActive ? "rgba(255,255,255,0.18)" : color + "18" }]}>
-                  <Ionicons name="book" size={20} color={isActive ? Colors.white : color} />
+                <View style={[styles.unitBar, { backgroundColor: isActive ? "rgba(255,255,255,0.35)" : color }]} />
+                <View style={[styles.unitIcon, { backgroundColor: isActive ? "rgba(255,255,255,0.18)" : color + "18" }]}>
+                  <Ionicons name="layers" size={20} color={isActive ? Colors.white : color} />
                 </View>
-                <View style={styles.courseInfo}>
-                  <Text style={[styles.courseName, isActive && styles.whiteText]} numberOfLines={2}>
-                    {course.title}
+                <View style={styles.unitInfo}>
+                  <Text style={[styles.unitName, isActive && styles.whiteText]} numberOfLines={2}>
+                    {unit.title}
                   </Text>
-                  <View style={styles.courseMeta}>
+                  <View style={styles.unitMeta}>
                     <View style={[styles.codePill, { backgroundColor: isActive ? "rgba(255,255,255,0.2)" : color + "18" }]}>
                       <Text style={[styles.codePillText, { color: isActive ? Colors.white : color }]}>
-                        {course.code}
+                        {unit.courseCode}
                       </Text>
                     </View>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="albums-outline" size={12} color={isActive ? "rgba(255,255,255,0.7)" : Colors.subtext} />
+                    <View style={styles.guideStatusRow}>
+                      <Ionicons
+                        name={hasGuide ? "document-text" : "document-text-outline"}
+                        size={12}
+                        color={isActive ? "rgba(255,255,255,0.7)" : hasGuide ? Colors.success : Colors.subtext}
+                      />
                       <Text style={[styles.metaText, isActive && styles.whiteSubText]}>
-                        {course.units?.length ?? 0} unit{course.units?.length !== 1 ? "s" : ""}
+                        {hasGuide ? "Guide ready" : "No guide"}
                       </Text>
                     </View>
                   </View>
@@ -202,14 +223,14 @@ export default function GradingScreen() {
         )}
 
         {/* ── STEP 2 ── */}
-        {selectedCourse && (
+        {selectedUnit && (
           <>
             <View style={[styles.sectionHeader, { marginTop: Spacing.lg }]}>
               <View style={[styles.stepBadge, { backgroundColor: Colors.accentLight }]}>
                 <Text style={[styles.stepBadgeText, { color: Colors.accent }]}>Step 2</Text>
               </View>
               <Text style={styles.sectionTitle}>Select Student</Text>
-              <Text style={styles.sectionSub}>Students enrolled in {selectedCourse.code}</Text>
+              <Text style={styles.sectionSub}>Students for {selectedUnit.courseCode}</Text>
             </View>
 
             {loadingStudents ? (
@@ -217,7 +238,7 @@ export default function GradingScreen() {
             ) : students.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Ionicons name="people-outline" size={32} color={Colors.subtext} />
-                <Text style={styles.emptyText}>No students enrolled in this course.</Text>
+                <Text style={styles.emptyText}>No students enrolled.</Text>
               </View>
             ) : (
               students.map((student) => {
@@ -261,7 +282,7 @@ export default function GradingScreen() {
         )}
 
         {/* ── STEP 3 ── */}
-        {selectedCourse && selectedStudent && (
+        {selectedUnit && selectedStudent && (
           <>
             <View style={[styles.sectionHeader, { marginTop: Spacing.lg }]}>
               <View style={[styles.stepBadge, { backgroundColor: Colors.successLight }]}>
@@ -274,11 +295,11 @@ export default function GradingScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
                 <View style={[styles.summaryIcon, { backgroundColor: Colors.primaryLight }]}>
-                  <Ionicons name="book-outline" size={18} color={Colors.primary} />
+                  <Ionicons name="layers-outline" size={18} color={Colors.primary} />
                 </View>
                 <View style={styles.summaryInfo}>
-                  <Text style={styles.summaryLabel}>Course</Text>
-                  <Text style={styles.summaryValue} numberOfLines={1}>{selectedCourse.title}</Text>
+                  <Text style={styles.summaryLabel}>Unit</Text>
+                  <Text style={styles.summaryValue} numberOfLines={1}>{selectedUnit.title}</Text>
                 </View>
               </View>
               <View style={styles.summaryDivider} />
@@ -293,15 +314,29 @@ export default function GradingScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.proceedBtn} onPress={handleStartGrading} activeOpacity={0.88}>
+            {!guideStatus[selectedUnit.id] && (
+              <View style={styles.warningCard}>
+                <Ionicons name="warning-outline" size={20} color={Colors.warning} />
+                <Text style={styles.warningText}>
+                  No marking guide uploaded for this unit. Upload one first in the units screen.
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.proceedBtn, !guideStatus[selectedUnit.id] && styles.proceedBtnDisabled]}
+              onPress={handleStartGrading}
+              activeOpacity={0.88}
+              disabled={!guideStatus[selectedUnit.id]}
+            >
               <LinearGradient
-                colors={[Colors.primary, Colors.primaryDark]}
+                colors={guideStatus[selectedUnit.id] ? [Colors.primary, Colors.primaryDark] : [Colors.subtext, Colors.subtext]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.proceedGradient}
               >
                 <View style={styles.proceedIconBox}>
-                  <Ionicons name="scan-outline" size={20} color={Colors.primary} />
+                  <Ionicons name="scan-outline" size={20} color={guideStatus[selectedUnit.id] ? Colors.primary : Colors.white} />
                 </View>
                 <Text style={styles.proceedBtnText}>Proceed to Scan</Text>
                 <Ionicons name="arrow-forward" size={18} color={Colors.white} />
@@ -374,21 +409,22 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm,
   },
   emptyText: { fontSize: FontSize.sm, color: Colors.subtext, marginTop: Spacing.sm, textAlign: "center" },
-  courseCard: {
+  unitCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.surface, borderRadius: Radius.xl,
     marginBottom: Spacing.sm, borderWidth: 1.5, borderColor: Colors.border,
     overflow: "hidden", paddingRight: Spacing.md, paddingVertical: Spacing.md,
     gap: Spacing.md, ...Shadows.sm,
   },
-  courseCardActive: { borderColor: Colors.primary },
-  courseBar: { width: 5, height: "100%" },
-  courseIcon: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: "center", alignItems: "center" },
-  courseInfo: { flex: 1 },
-  courseName: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, marginBottom: 4, lineHeight: 20 },
-  courseMeta: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  unitCardActive: { borderColor: Colors.primary },
+  unitBar: { width: 5, height: "100%" },
+  unitIcon: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: "center", alignItems: "center" },
+  unitInfo: { flex: 1 },
+  unitName: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, marginBottom: 4, lineHeight: 20 },
+  unitMeta: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   codePill: { borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
   codePillText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+  guideStatusRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaText: { fontSize: FontSize.xs, color: Colors.subtext },
   studentCard: {
@@ -427,6 +463,7 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: FontSize.xs, color: Colors.subtext, marginBottom: 2 },
   summaryValue: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text },
   proceedBtn: { borderRadius: Radius.xl, overflow: "hidden", marginBottom: Spacing.md, ...Shadows.colored },
+  proceedBtnDisabled: { opacity: 0.6 },
   proceedGradient: {
     flexDirection: "row", alignItems: "center",
     paddingVertical: Spacing.md + 2, paddingHorizontal: Spacing.lg, gap: Spacing.md,
@@ -436,4 +473,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white, justifyContent: "center", alignItems: "center",
   },
   proceedBtnText: { flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.white },
+  warningCard: {
+    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+    backgroundColor: Colors.warningLight, borderRadius: Radius.lg,
+    padding: Spacing.md, marginBottom: Spacing.md,
+    borderWidth: 1, borderColor: Colors.warning + "30",
+  },
+  warningText: { flex: 1, fontSize: FontSize.sm, color: Colors.warning, lineHeight: 18 },
 });

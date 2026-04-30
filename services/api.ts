@@ -425,14 +425,14 @@ export const studentAPI = {
 // ============ GRADING ENDPOINTS ============
 
 export const gradingAPI = {
-  gradeQuestion: async (
-    questionId: number,
+  gradeUnit: async (
+    unitId: number,
     studentId: number,
     answerSheet: any,
     token: string
   ) => {
     const formData = new FormData();
-    formData.append("question_id", questionId.toString());
+    formData.append("unit_id", unitId.toString());
     formData.append("student_id", studentId.toString());
     formData.append("answer_sheet", answerSheet);
 
@@ -446,7 +446,7 @@ export const gradingAPI = {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.detail || "Failed to grade question");
+      throw new Error(error.detail || "Failed to grade answer sheet");
     }
 
     return response.json();

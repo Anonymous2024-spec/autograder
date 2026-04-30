@@ -49,7 +49,7 @@ function getGradeStyle(percentage: number) {
 export default function GradeResult() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { courseId, studentId, gradingResult: gradingResultRaw } = useLocalSearchParams();
+  const { unitId, unitName, studentName, gradingResult: gradingResultRaw } = useLocalSearchParams();
 
   // Parse grading result from navigation params
   let gradingData: GradingResult | null = null;
@@ -105,7 +105,9 @@ export default function GradeResult() {
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Grade Report</Text>
-            <Text style={styles.headerSub}>AI-marked answer sheet result</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              {studentName} — {unitName}
+            </Text>
           </View>
           <View style={[styles.headerGradeBadge, { backgroundColor: gradeStyle.color + "30" }]}>
             <Text style={[styles.headerGradeBadgeText, { color: Colors.white }]}>
