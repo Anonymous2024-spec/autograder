@@ -170,7 +170,17 @@ export default function AdminQuestionsScreen() {
         onPress: () =>
           router.push({
             pathname: "/(admin)/questions/edit",
-            params: { id: question.id, unitId: selectedUnit?.id },
+            params: { 
+              id: question.id.toString(),
+              question_text: question.question_text || "",
+              option_a: question.option_a || "",
+              option_b: question.option_b || "",
+              option_c: question.option_c || "",
+              option_d: question.option_d || "",
+              correct_answer: question.correct_answer || "",
+              unitName: selectedUnit?.title || "",
+              unitCode: selectedUnit?.description || "",
+            },
           }),
       },
       {

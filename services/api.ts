@@ -258,6 +258,25 @@ export const lecturerAPI = {
   getCourse: (courseId: number, token: string) =>
     apiCall(`/lecturer/courses/${courseId}`, { token }),
 
+  createMCQQuestion: (
+    data: {
+      unit_id: number;
+      question_text?: string;
+      total_marks?: number;
+      option_a?: string;
+      option_b?: string;
+      option_c?: string;
+      option_d?: string;
+      correct_answer?: string;
+    },
+    token: string
+  ) =>
+    apiCall("/lecturer/questions/mcq", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
   createQuestion: async (
     unitId: number,
     questionData: any,
@@ -302,6 +321,31 @@ export const lecturerAPI = {
 
   getCourseQuestions: (courseId: number, token: string) =>
     apiCall(`/lecturer/courses/${courseId}/questions`, { token }),
+
+  getQuestion: (questionId: number, token: string) =>
+    apiCall(`/lecturer/question/${questionId}`, { token }),
+
+  updateQuestion: (
+    questionId: number,
+    data: {
+      question_text?: string;
+      total_marks?: number;
+      option_a?: string;
+      option_b?: string;
+      option_c?: string;
+      option_d?: string;
+      correct_answer?: string;
+    },
+    token: string
+  ) =>
+    apiCall(`/lecturer/question/${questionId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  deleteQuestion: (questionId: number, token: string) =>
+    apiCall(`/lecturer/question/${questionId}`, { method: "DELETE", token }),
 };
 
 // ============ STUDENT ENDPOINTS ============

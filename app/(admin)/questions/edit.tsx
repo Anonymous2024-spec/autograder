@@ -1,18 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Input from "../../../components/Input";
 import {
   Colors,
   FontSize,
@@ -21,6 +23,8 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
 const LABELS = ["A", "B", "C", "D"];
 const LABEL_COLORS = [
@@ -30,37 +34,41 @@ const LABEL_COLORS = [
   Colors.cardPurple,
 ];
 
-// Mock units — replace with API call when backend is ready
-const COURSE_UNITS = [
-  { id: 1, name: "Introduction to Programming", code: "PROG101" },
-  { id: 2, name: "Web Development Basics", code: "WEB101" },
-  { id: 3, name: "Database Management", code: "DB101" },
-  { id: 4, name: "Networking Fundamentals", code: "NET101" },
-  { id: 5, name: "Cybersecurity Basics", code: "SEC101" },
-];
-
 export default function AdminEditQuestion() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
-  // Get question id and unitId passed from list screen
-  const { id, unitId } = useLocalSearchParams<{
+  const { 
+    id, 
+    question_text, 
+    option_a, 
+    option_b, 
+    option_c, 
+    option_d, 
+    correct_answer, 
+    unitName, 
+    unitCode 
+  } = useLocalSearchParams<{
     id: string;
-    unitId: string;
+    question_text?: string;
+    option_a?: string;
+    option_b?: string;
+    option_c?: string;
+    option_d?: string;
+    correct_answer?: string;
+    unitName?: string;
+    unitCode?: string;
   }>();
 
-  // Find the unit this question belongs to
-  const selectedUnit = COURSE_UNITS.find((u) => u.id === Number(unitId));
-
-  // Pre-filled form values
-  // TODO: Replace with real API fetch by question id
-  const [question, setQuestion] = useState("What is the full meaning of CPU?");
+  const [question, setQuestion] = useState(question_text || "");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [options, setOptions] = useState([
-    { id: 1, text: "Central Processing Unit", is_correct: true },
-    { id: 2, text: "Computer Personal Unit", is_correct: false },
-    { id: 3, text: "Central Program Utility", is_correct: false },
-    { id: 4, text: "Core Processing Unit", is_correct: false },
+    { text: option_a || "", is_correct: correct_answer === "A" },
+    { text: option_b || "", is_correct: correct_answer === "B" },
+    { text: option_c || "", is_correct: correct_answer === "C" },
+    { text: option_d || "", is_correct: correct_answer === "D" },
   ]);
 
   const updateOptionText = (index: number, text: string) => {
@@ -75,26 +83,58 @@ export default function AdminEditQuestion() {
 
   const correctIndex = options.findIndex((o) => o.is_correct);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!question.trim()) {
-      alert("Please enter the question");
+      Alert.alert("Validation Error", "Please enter the question");
       return;
     }
     if (options.some((opt) => !opt.text.trim())) {
-      alert("Please fill in all options");
+      Alert.alert("Validation Error", "Please fill in all options");
       return;
     }
     if (!options.some((opt) => opt.is_correct)) {
-      alert("Please mark the correct answer");
+      Alert.alert("Validation Error", "Please mark the correct answer");
       return;
     }
+    if (!token || !id) {
+      Alert.alert("Error", "Missing required data");
+      return;
+    }
+
     setLoading(true);
-    // TODO: PUT to API with id, unitId, question, options
-    console.log({ id, unitId, question, options });
-    setTimeout(() => {
+    try {
+      const correctIdx = options.findIndex((o) => o.is_correct);
+      
+      const questionData = {
+        question_text: question.trim(),
+        total_marks: 10,
+        option_a: options[0].text.trim(),
+        option_b: options[1].text.trim(),
+        option_c: options[2].text.trim(),
+        option_d: options[3].text.trim(),
+        correct_answer: LABELS[correctIdx],
+      };
+      
+      console.log("📝 Updating question:", questionData);
+      
+      await adminAPI.updateQuestion(parseInt(id), questionData, token);
+
+      Alert.alert("Success", "Question updated successfully", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (err: any) {
+      console.error("❌ Error updating question:", err);
+      Alert.alert(
+        "Error", 
+        `Failed to update question: ${err.message || "Unknown error"}`,
+        [{ text: "OK" }]
+      );
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   return (
@@ -172,18 +212,20 @@ export default function AdminEditQuestion() {
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Unit info card ── */}
-        {selectedUnit && (
+        {unitName && (
           <View style={styles.unitInfoCard}>
             <View style={styles.unitInfoIcon}>
               <Ionicons name="layers" size={18} color={Colors.primary} />
             </View>
             <View style={styles.unitInfoText}>
               <Text style={styles.unitInfoLabel}>Question belongs to</Text>
-              <Text style={styles.unitInfoName}>{selectedUnit.name}</Text>
+              <Text style={styles.unitInfoName}>{unitName}</Text>
             </View>
-            <View style={styles.unitCodeBadge}>
-              <Text style={styles.unitCodeText}>{selectedUnit.code}</Text>
-            </View>
+            {unitCode && (
+              <View style={styles.unitCodeBadge}>
+                <Text style={styles.unitCodeText}>{unitCode}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -204,13 +246,14 @@ export default function AdminEditQuestion() {
               />
             </View>
             <View style={styles.fieldInput}>
-              <Input
-                label="Question Text"
+              <TextInput
+                style={styles.questionInput}
                 placeholder="Enter your MCQ question here..."
+                placeholderTextColor={Colors.placeholder}
                 value={question}
                 onChangeText={setQuestion}
-                icon="help-circle-outline"
                 multiline
+                editable={!loading}
               />
             </View>
           </View>
@@ -227,7 +270,7 @@ export default function AdminEditQuestion() {
           const color = LABEL_COLORS[index];
           return (
             <View
-              key={opt.id}
+              key={index}
               style={[
                 styles.optionCard,
                 isCorrect && {
@@ -259,6 +302,7 @@ export default function AdminEditQuestion() {
                       isCorrect && { borderColor: color },
                     ]}
                     onPress={() => markCorrect(index)}
+                    disabled={loading}
                   >
                     {isCorrect && (
                       <View
@@ -269,11 +313,13 @@ export default function AdminEditQuestion() {
                 </View>
 
                 <View style={styles.optionInputWrap}>
-                  <Input
-                    label=""
+                  <TextInput
+                    style={styles.optionInput}
                     placeholder={`Type option ${LABELS[index]} here...`}
+                    placeholderTextColor={Colors.placeholder}
                     value={opt.text}
                     onChangeText={(text) => updateOptionText(index, text)}
+                    editable={!loading}
                   />
                 </View>
               </View>
@@ -301,6 +347,7 @@ export default function AdminEditQuestion() {
         <TouchableOpacity
           style={styles.cancelBtn}
           onPress={() => router.back()}
+          disabled={loading}
           activeOpacity={0.7}
         >
           <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -318,7 +365,7 @@ export default function AdminEditQuestion() {
             style={styles.submitGradient}
           >
             {loading ? (
-              <Text style={styles.submitBtnText}>Saving...</Text>
+              <ActivityIndicator size="small" color={Colors.white} />
             ) : (
               <>
                 <Ionicons name="save-outline" size={18} color={Colors.white} />
@@ -496,6 +543,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg + 2,
   },
   fieldInput: { flex: 1 },
+  questionInput: {
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: Spacing.md,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
 
   // Option cards
   optionCard: {
@@ -545,6 +599,11 @@ const styles = StyleSheet.create({
   },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   optionInputWrap: { marginTop: -Spacing.xs },
+  optionInput: {
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    paddingVertical: Spacing.sm,
+  },
 
   // Warning note
   warningNote: {

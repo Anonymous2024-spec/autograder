@@ -1,18 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Input from "../../../components/Input";
 import {
   Colors,
   FontSize,
@@ -21,25 +23,58 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
 const LABELS = ["A", "B", "C", "D"];
-const LABEL_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
+const LABEL_COLORS = [
+  Colors.cardBlue,
+  Colors.cardTeal,
+  Colors.cardGreen,
+  Colors.cardPurple,
+];
 
-export default function EditQuestion() {
+export default function LecturerEditQuestion() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams();
+  const { token } = useAuth();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  // TODO: Replace with real API fetch by id
-  const [question, setQuestion] = useState("What is the full meaning of CPU?");
-  const [courseUnitId, setCourseUnitId] = useState("1");
+  const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [options, setOptions] = useState([
-    { id: 1, text: "Central Processing Unit", is_correct: true },
-    { id: 2, text: "Computer Personal Unit", is_correct: false },
-    { id: 3, text: "Central Program Utility", is_correct: false },
-    { id: 4, text: "Core Processing Unit", is_correct: false },
+    { text: "", is_correct: false },
+    { text: "", is_correct: false },
+    { text: "", is_correct: false },
+    { text: "", is_correct: false },
   ]);
+
+  const fetchQuestion = useCallback(async () => {
+    if (!token || !id) return;
+    setFetching(true);
+    try {
+      const data = await lecturerAPI.getQuestion(parseInt(id), token);
+      setQuestion(data.question_text || "");
+      setOptions([
+        { text: data.option_a || "", is_correct: data.correct_answer === "A" },
+        { text: data.option_b || "", is_correct: data.correct_answer === "B" },
+        { text: data.option_c || "", is_correct: data.correct_answer === "C" },
+        { text: data.option_d || "", is_correct: data.correct_answer === "D" },
+      ]);
+    } catch (err: any) {
+      console.error("Error fetching question:", err);
+      Alert.alert("Error", `Failed to load question: ${err.message || "Unknown error"}`);
+    } finally {
+      setFetching(false);
+    }
+  }, [id, token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchQuestion();
+    }, [fetchQuestion])
+  );
 
   const updateOptionText = (index: number, text: string) => {
     const updated = [...options];
@@ -53,13 +88,63 @@ export default function EditQuestion() {
 
   const correctIndex = options.findIndex((o) => o.is_correct);
 
-  const handleSubmit = () => {
-    if (!question || !courseUnitId) { alert("Please fill in the question and course unit"); return; }
-    if (options.some((opt) => !opt.text)) { alert("Please fill in all options"); return; }
-    if (!options.some((opt) => opt.is_correct)) { alert("Please mark the correct answer"); return; }
+  const handleSubmit = async () => {
+    if (!question.trim()) {
+      Alert.alert("Validation Error", "Please enter the question");
+      return;
+    }
+    if (options.some((opt) => !opt.text.trim())) {
+      Alert.alert("Validation Error", "Please fill in all options");
+      return;
+    }
+    if (!options.some((opt) => opt.is_correct)) {
+      Alert.alert("Validation Error", "Please mark the correct answer");
+      return;
+    }
+    if (!token || !id) {
+      Alert.alert("Error", "Missing required data");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => { setLoading(false); router.back(); }, 1000);
+    try {
+      const correctIdx = options.findIndex((o) => o.is_correct);
+
+      const questionData = {
+        question_text: question.trim(),
+        total_marks: 10,
+        option_a: options[0].text.trim(),
+        option_b: options[1].text.trim(),
+        option_c: options[2].text.trim(),
+        option_d: options[3].text.trim(),
+        correct_answer: LABELS[correctIdx],
+      };
+
+      await lecturerAPI.updateQuestion(parseInt(id), questionData, token);
+
+      Alert.alert("Success", "Question updated successfully", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      console.error("Error updating question:", err);
+      Alert.alert(
+        "Error",
+        `Failed to update question: ${err.message || "Unknown error"}`,
+        [{ text: "OK" }]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (fetching) {
+    return (
+      <View style={[styles.root, styles.center]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading question...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -106,36 +191,21 @@ export default function EditQuestion() {
         contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionLabel}>Question Details</Text>
+        <Text style={styles.sectionLabel}>Question</Text>
         <View style={styles.formCard}>
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
-              <Ionicons name="book-outline" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.fieldInput}>
-              <Input
-                label="Course Unit ID"
-                placeholder="e.g. 1"
-                value={courseUnitId}
-                onChangeText={setCourseUnitId}
-                keyboardType="numeric"
-                icon="book-outline"
-              />
-            </View>
-          </View>
-          <View style={styles.fieldDivider} />
           <View style={styles.fieldRow}>
             <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
               <Ionicons name="help-circle-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
-              <Input
-                label="Question"
+              <TextInput
+                style={styles.questionInput}
                 placeholder="Enter your MCQ question here..."
+                placeholderTextColor={Colors.placeholder}
                 value={question}
                 onChangeText={setQuestion}
-                icon="help-circle-outline"
                 multiline
+                editable={!loading}
               />
             </View>
           </View>
@@ -149,8 +219,11 @@ export default function EditQuestion() {
           const color = LABEL_COLORS[index];
           return (
             <View
-              key={opt.id}
-              style={[styles.optionCard, isCorrect && { borderColor: color, backgroundColor: color + "08" }]}
+              key={index}
+              style={[
+                styles.optionCard,
+                isCorrect && { borderColor: color, backgroundColor: color + "08" },
+              ]}
             >
               {isCorrect && <View style={[styles.optionBar, { backgroundColor: color }]} />}
               <View style={styles.optionContent}>
@@ -164,16 +237,19 @@ export default function EditQuestion() {
                   <TouchableOpacity
                     style={[styles.radioBtn, isCorrect && { borderColor: color }]}
                     onPress={() => markCorrect(index)}
+                    disabled={loading}
                   >
                     {isCorrect && <View style={[styles.radioDot, { backgroundColor: color }]} />}
                   </TouchableOpacity>
                 </View>
                 <View style={styles.optionInputWrap}>
-                  <Input
-                    label=""
+                  <TextInput
+                    style={styles.optionInput}
                     placeholder={`Type option ${LABELS[index]} here...`}
+                    placeholderTextColor={Colors.placeholder}
                     value={opt.text}
                     onChangeText={(text) => updateOptionText(index, text)}
+                    editable={!loading}
                   />
                 </View>
               </View>
@@ -181,16 +257,21 @@ export default function EditQuestion() {
           );
         })}
 
-        <View style={styles.infoNote}>
+        <View style={styles.warningNote}>
           <Ionicons name="warning-outline" size={15} color={Colors.warning} />
-          <Text style={[styles.infoNoteText, { color: Colors.warning }]}>
-            Editing this question will affect all previously generated answer sheets.
+          <Text style={styles.warningNoteText}>
+            Editing this question will affect all previously generated answer sheets for this unit.
           </Text>
         </View>
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={() => router.back()}
+          disabled={loading}
+          activeOpacity={0.7}
+        >
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -206,7 +287,7 @@ export default function EditQuestion() {
             style={styles.submitGradient}
           >
             {loading ? (
-              <Text style={styles.submitBtnText}>Saving...</Text>
+              <ActivityIndicator size="small" color={Colors.white} />
             ) : (
               <>
                 <Ionicons name="save-outline" size={18} color={Colors.white} />
@@ -222,6 +303,8 @@ export default function EditQuestion() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
+  center: { justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: Spacing.md, fontSize: FontSize.sm, color: Colors.subtext },
   header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
   headerShapeL: {
     position: "absolute", width: 200, height: 200, borderRadius: 100,
@@ -274,7 +357,10 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center", marginTop: Spacing.lg + 2,
   },
   fieldInput: { flex: 1 },
-  fieldDivider: { height: 1, backgroundColor: Colors.border, marginLeft: Spacing.md + 38 + Spacing.md },
+  questionInput: {
+    fontSize: FontSize.sm, color: Colors.text,
+    paddingVertical: Spacing.md, minHeight: 80, textAlignVertical: "top",
+  },
   optionCard: {
     flexDirection: "row",
     backgroundColor: Colors.surface, borderRadius: Radius.xl,
@@ -290,13 +376,14 @@ const styles = StyleSheet.create({
   radioBtn: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.border, justifyContent: "center", alignItems: "center" },
   radioDot: { width: 10, height: 10, borderRadius: 5 },
   optionInputWrap: { marginTop: -Spacing.xs },
-  infoNote: {
+  optionInput: { fontSize: FontSize.sm, color: Colors.text, paddingVertical: Spacing.sm },
+  warningNote: {
     flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
     backgroundColor: Colors.warningLight, borderRadius: Radius.lg,
     padding: Spacing.md, marginTop: Spacing.sm,
     borderWidth: 1, borderColor: Colors.warning + "30",
   },
-  infoNoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
+  warningNoteText: { flex: 1, fontSize: FontSize.xs, color: Colors.warning, lineHeight: 18 },
   bottomBar: {
     flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
     backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,

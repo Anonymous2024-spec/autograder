@@ -132,7 +132,14 @@ export default function QuestionsScreen() {
             <TouchableOpacity
               style={styles.addBtn}
               onPress={() =>
-                router.push({ pathname: "/(lecturer)/questions/create" })
+                router.push({
+                  pathname: "/(lecturer)/questions/create",
+                  params: {
+                    unitId: selectedUnit.id.toString(),
+                    unitName: selectedUnit.title,
+                    unitCode: selectedUnit.courseCode,
+                  },
+                })
               }
             >
               <Ionicons name="add" size={22} color={Colors.white} />
