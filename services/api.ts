@@ -160,6 +160,38 @@ export const adminAPI = {
 
   deleteCourse: (courseId: number, token: string) =>
     apiCall(`/admin/courses/${courseId}`, { method: "DELETE", token }),
+
+  // Course Units
+  getCourseUnits: (courseId: number, token: string) =>
+    apiCall(`/admin/courses/${courseId}/units`, { token }),
+
+  getUnit: (unitId: number, token: string) =>
+    apiCall(`/admin/units/${unitId}`, { token }),
+
+  createCourseUnit: (
+    courseId: number,
+    data: { title: string; description?: string; order?: number },
+    token: string
+  ) =>
+    apiCall(`/admin/courses/${courseId}/units`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  updateCourseUnit: (
+    unitId: number,
+    data: { title?: string; description?: string; order?: number },
+    token: string
+  ) =>
+    apiCall(`/admin/units/${unitId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  deleteCourseUnit: (unitId: number, token: string) =>
+    apiCall(`/admin/units/${unitId}`, { method: "DELETE", token }),
 };
 
 // ============ LECTURER ENDPOINTS ============

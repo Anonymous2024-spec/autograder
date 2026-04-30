@@ -30,22 +30,30 @@ export default function AdminLayout() {
       <Stack.Screen name="courses/register" options={{ headerShown: false }} />
       <Stack.Screen name="courses/edit" options={{ headerShown: false }} />
 
-      {/* course units */}
-      <Stack.Screen name="courses/units" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="courses/units/create"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="courses/units/edit"
-        options={{ headerShown: false }}
-      />
+       {/* course units */}
+       <Stack.Screen name="courses/units" options={{ headerShown: false }} />
+       <Stack.Screen
+         name="courses/units/create"
+         options={{ headerShown: false }}
+       />
+       <Stack.Screen
+         name="courses/units/edit"
+         options={{ headerShown: false }}
+       />
 
-      <Stack.Screen
-        name="questions"
-        options={{ headerShown: true, title: "Questions" }}
-      />
-      <Stack.Screen name="questions/create" options={{ headerShown: false }} />
+       {/* units standalone */}
+       <Stack.Screen
+         name="units"
+         options={{ headerShown: true, title: "Course Units" }}
+       />
+       <Stack.Screen name="units/create" options={{ headerShown: false }} />
+       <Stack.Screen name="units/edit" options={{ headerShown: false }} />
+
+       <Stack.Screen
+         name="questions"
+         options={{ headerShown: true, title: "Questions" }}
+       />
+       <Stack.Screen name="questions/create" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
 import {
   Alert,
   Dimensions,
@@ -20,57 +21,125 @@ import {
   Shadows,
   Spacing,
 } from "../../constants";
+import { adminAPI } from "../../services/api";
 
 const { width } = Dimensions.get("window");
 
-// Action cards config
-const ACTIONS = [
-  {
-    id: "students",
-    title: "Students",
-    description: "Register & manage students",
-    icon: "people",
-    route: "/(admin)/students",
-    gradient: [Colors.cardBlue, Colors.primaryDark] as [string, string],
-    count: "124",
-    countLabel: "enrolled",
-  },
-  {
-    id: "staff",
-    title: "Staff & Users",
-    description: "Manage staff accounts",
-    icon: "person-add",
-    route: "/(admin)/staff",
-    gradient: [Colors.cardPurple, "#6D28D9"] as [string, string],
-    count: "12",
-    countLabel: "active",
-  },
-  {
-    id: "courses",
-    title: "Courses",
-    description: "Register & manage courses",
-    icon: "book",
-    route: "/(admin)/courses",
-    gradient: [Colors.cardTeal, "#0369A1"] as [string, string],
-    count: "8",
-    countLabel: "courses",
-  },
-  {
-    id: "questions",
-    title: "Questions",
-    description: "View MCQ questions",
-    icon: "help-circle",
-    route: "/(admin)/questions",
-    gradient: [Colors.cardGreen, "#047857"] as [string, string],
-    count: "340",
-    countLabel: "questions",
-  },
-];
-
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const insets = useSafeAreaInsets();
+
+  // State for dashboard counts
+  const [courseCount, setCourseCount] = useState(0);
+  const [unitsCount, setUnitsCount] = useState(0);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [studentCount] = useState(124);
+  const [staffCount] = useState(12);
+
+  // Fetch courses count when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchCourseCount();
+      }
+    }, [token])
+  );
+
+  const fetchCourseCount = async () => {
+    try {
+      const courses = await adminAPI.getAllCourses(token);
+      const courseList = Array.isArray(courses) ? courses : [];
+      setCourseCount(courseList.length);
+      
+      // Count all units and questions from all courses
+      let totalUnits = 0;
+      let totalQuestions = 0;
+      for (const course of courseList) {
+        try {
+          const courseData = await adminAPI.getCourse(course.id, token);
+          if (courseData?.units) {
+            totalUnits += courseData.units.length;
+            for (const unit of courseData.units) {
+              if (unit.questions) {
+                totalQuestions += unit.questions.length;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching course ${course.id}:`, error);
+        }
+      }
+      setUnitsCount(totalUnits);
+      setQuestionCount(totalQuestions);
+    } catch (error) {
+      console.error("Error fetching course count:", error);
+    }
+  };
+
+  const getInitials = (name: string): string => {
+    if (!name) return "AU";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Action cards with dynamic counts
+  const ACTIONS = [
+    {
+      id: "students",
+      title: "Students",
+      description: "Register & manage students",
+      icon: "people",
+      route: "/(admin)/students",
+      gradient: [Colors.cardBlue, Colors.primaryDark] as [string, string],
+      count: studentCount.toString(),
+      countLabel: "enrolled",
+    },
+    {
+      id: "staff",
+      title: "Staff & Users",
+      description: "Manage staff accounts",
+      icon: "person-add",
+      route: "/(admin)/staff",
+      gradient: [Colors.cardPurple, "#6D28D9"] as [string, string],
+      count: staffCount.toString(),
+      countLabel: "active",
+    },
+    {
+      id: "courses",
+      title: "Courses",
+      description: "Register & manage courses",
+      icon: "book",
+      route: "/(admin)/courses",
+      gradient: [Colors.cardTeal, "#0369A1"] as [string, string],
+      count: courseCount.toString(),
+      countLabel: "courses",
+    },
+    {
+      id: "units",
+      title: "Course Units",
+      description: "Manage course units",
+      icon: "layers",
+      route: "/(admin)/units",
+      gradient: ["#7C3AED", "#A855F7"] as [string, string],
+      count: unitsCount.toString(),
+      countLabel: "units",
+    },
+    {
+      id: "questions",
+      title: "Questions",
+      description: "View MCQ questions",
+      icon: "help-circle",
+      route: "/(admin)/questions",
+      gradient: [Colors.cardGreen, "#047857"] as [string, string],
+      count: questionCount.toString(),
+      countLabel: "questions",
+    },
+  ];
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -81,16 +150,6 @@ export default function AdminDashboard() {
         onPress: async () => { await logout(); },
       },
     ]);
-  };
-
-  // Get initials from username
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   return (
@@ -116,7 +175,7 @@ export default function AdminDashboard() {
             onPress={() => router.push({ pathname: "/(admin)/profile" })}
           >
             <Text style={styles.avatarText}>
-              {getInitials(user?.username ?? "AU")}
+              {user ? getInitials(user.full_name) : "AU"}
             </Text>
           </TouchableOpacity>
 
@@ -150,7 +209,7 @@ export default function AdminDashboard() {
         <View style={styles.headerGreeting}>
           <Text style={styles.greetingSmall}>Good day 👋</Text>
           <Text style={styles.greetingName}>
-            {user?.username ?? "Administrator"}
+            {user ? user.full_name : "Administrator"}
           </Text>
           <View style={styles.roleBadge}>
             <Ionicons
@@ -165,23 +224,23 @@ export default function AdminDashboard() {
         {/* Stats strip */}
         <View style={styles.statsStrip}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>124</Text>
+            <Text style={styles.statNumber}>{studentCount}</Text>
             <Text style={styles.statLabel}>Students</Text>
           </View>
           <View style={styles.statSeparator} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
+            <Text style={styles.statNumber}>{staffCount}</Text>
             <Text style={styles.statLabel}>Staff</Text>
           </View>
           <View style={styles.statSeparator} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>8</Text>
+            <Text style={styles.statNumber}>{courseCount}</Text>
             <Text style={styles.statLabel}>Courses</Text>
           </View>
           <View style={styles.statSeparator} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>340</Text>
-            <Text style={styles.statLabel}>Questions</Text>
+            <Text style={styles.statNumber}>{unitsCount}</Text>
+            <Text style={styles.statLabel}>Units</Text>
           </View>
         </View>
 
