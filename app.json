@@ -44,6 +44,12 @@
         {
           "cameraPermission": "Allow AutoGrader to access your camera to scan answer sheets."
         }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudPermission": "Allow AutoGrader to access iCloud to select PDF files."
+        }
       ]
     ],
     "experiments": {

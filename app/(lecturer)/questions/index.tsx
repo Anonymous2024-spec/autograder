@@ -132,7 +132,14 @@ export default function QuestionsScreen() {
             <TouchableOpacity
               style={styles.addBtn}
               onPress={() =>
-                router.push({ pathname: "/(lecturer)/questions/create" })
+                router.push({
+                  pathname: "/(lecturer)/questions/create",
+                  params: {
+                    unitId: selectedUnit.id.toString(),
+                    unitName: selectedUnit.title,
+                    unitCode: selectedUnit.courseCode,
+                  },
+                })
               }
             >
               <Ionicons name="add" size={22} color={Colors.white} />
@@ -550,6 +557,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   menuBtn: { padding: Spacing.xs },
+  questionRight: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
+  guideBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.successLight,
+    justifyContent: "center", alignItems: "center",
+  },
+  noGuideBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.warningLight,
+    justifyContent: "center", alignItems: "center",
+  },
 
   // Empty / no course states
   noCourseContainer: {

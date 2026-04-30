@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -23,7 +25,9 @@ import {
   Spacing,
 } from "../../../constants";
 import { useAuth } from "../../../context/AuthContext";
-import { authAPI } from "../../../services/api";
+import { authAPI, adminAPI } from "../../../services/api";
+
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function RegisterStudent() {
   const router = useRouter();
@@ -32,12 +36,26 @@ export default function RegisterStudent() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("student123");
+  const [password] = useState("student123");
   const [regNo, setRegNo] = useState("");
   const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState({ name: "", email: "", regNo: "" });
+
+  const [courses, setCourses] = useState<any[]>([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [registeredStudentId, setRegisteredStudentId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (token && showCoursePicker) {
+      adminAPI.getAllCourses(token)
+        .then((data) => setCourses(Array.isArray(data) ? data : []))
+        .catch(console.error);
+    }
+  }, [token, showCoursePicker]);
 
   const validate = () => {
     const e = { name: "", email: "", regNo: "" };
@@ -62,14 +80,53 @@ export default function RegisterStudent() {
         department.trim() || undefined
       );
       if (result.detail) throw new Error(result.detail);
-      Alert.alert("Success", `Student ${name} registered successfully!`, [
-        { text: "OK", onPress: () => router.back() }
-      ]);
+      setRegisteredStudentId(result.student?.id ?? result.id);
+      setShowCoursePicker(true);
     } catch (err: any) {
       Alert.alert("Error", err.message || "Failed to register student");
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleCourse = (courseId: number) => {
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const handleEnrollAndFinish = async () => {
+    if (!token || !registeredStudentId) return;
+    if (selectedCourseIds.length === 0) {
+      setShowCoursePicker(false);
+      Alert.alert("Success", `Student ${name} registered successfully!`, [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+      return;
+    }
+    setEnrolling(true);
+    let enrolledCount = 0;
+    for (const courseId of selectedCourseIds) {
+      try {
+        await adminAPI.enrollStudent(registeredStudentId, courseId, token);
+        enrolledCount++;
+      } catch (err) {
+        console.error(`Failed to enroll in course ${courseId}:`, err);
+      }
+    }
+    setEnrolling(false);
+    Alert.alert(
+      "Success",
+      `Student registered and enrolled in ${enrolledCount} course(s).`,
+      [{ text: "OK", onPress: () => router.back() }]
+    );
+  };
+
+  const handleSkipEnrollment = () => {
+    setShowCoursePicker(false);
+    Alert.alert("Success", `Student ${name} registered successfully!`, [
+      { text: "OK", onPress: () => router.back() },
+    ]);
   };
 
   return (
@@ -151,7 +208,6 @@ export default function RegisterStudent() {
                 onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
                 icon="mail-outline"
                 keyboardType="email-address"
-                autoCapitalize="none"
                 error={errors.email}
               />
             </View>
@@ -222,7 +278,7 @@ export default function RegisterStudent() {
             style={styles.submitGradient}
           >
             {loading ? (
-              <Text style={styles.submitBtnText}>Registering...</Text>
+              <ActivityIndicator size="small" color={Colors.white} />
             ) : (
               <>
                 <Ionicons name="person-add-outline" size={18} color={Colors.white} />
@@ -232,6 +288,75 @@ export default function RegisterStudent() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* ── Course Enrollment Modal ── */}
+      <Modal visible={showCoursePicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Enroll in Courses</Text>
+                <Text style={styles.modalSub}>Select courses to enroll {name} in</Text>
+              </View>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={handleSkipEnrollment}>
+                <Ionicons name="close" size={24} color={Colors.subtext} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.courseList} showsVerticalScrollIndicator={false}>
+              {courses.length === 0 ? (
+                <Text style={styles.noCoursesText}>No courses available</Text>
+              ) : (
+                courses.map((course, idx) => {
+                  const isSelected = selectedCourseIds.includes(course.id);
+                  const color = COURSE_COLORS[idx % COURSE_COLORS.length];
+                  return (
+                    <TouchableOpacity
+                      key={course.id}
+                      style={[styles.courseOption, isSelected && styles.courseOptionActive]}
+                      onPress={() => toggleCourse(course.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.courseOptionIcon, { backgroundColor: isSelected ? color : color + "18" }]}>
+                        <Ionicons name="book" size={20} color={isSelected ? Colors.white : color} />
+                      </View>
+                      <View style={styles.courseOptionInfo}>
+                        <Text style={styles.courseOptionName}>{course.title}</Text>
+                        <Text style={styles.courseOptionSubtext}>{course.code}</Text>
+                      </View>
+                      <View style={[styles.checkbox, isSelected && { backgroundColor: color, borderColor: color }]}>
+                        {isSelected && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <TouchableOpacity style={styles.modalSkipBtn} onPress={handleSkipEnrollment}>
+                <Text style={styles.modalSkipText}>Skip for now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalEnrollBtn, enrolling && { opacity: 0.7 }]}
+                onPress={handleEnrollAndFinish}
+                disabled={enrolling}
+              >
+                {enrolling ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
+                    <Text style={styles.modalEnrollText}>
+                      Enroll {selectedCourseIds.length > 0 && `(${selectedCourseIds.length})`}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -507,5 +632,64 @@ const styles = StyleSheet.create({
   courseOptionSubtext: {
     fontSize: FontSize.xs,
     color: Colors.subtext,
+  },
+  modalSub: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    marginTop: 2,
+  },
+  noCoursesText: {
+    padding: Spacing.lg,
+    textAlign: "center",
+    color: Colors.subtext,
+    fontSize: FontSize.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalFooter: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+  },
+  modalSkipBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSkipText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+  },
+  modalEnrollBtn: {
+    flex: 2,
+    flexDirection: "row",
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    ...Shadows.colored,
+  },
+  modalEnrollText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
   },
 });

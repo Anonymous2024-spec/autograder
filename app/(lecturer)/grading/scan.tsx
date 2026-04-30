@@ -14,39 +14,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors, FontSize, Radius, Spacing } from "../../../constants";
 import { useAuth } from "../../../context/AuthContext";
-import { gradingAPI, lecturerAPI } from "../../../services/api";
+import { gradingAPI } from "../../../services/api";
 
 export default function ScanScreen() {
   const router = useRouter();
-  const { courseId, studentId } = useLocalSearchParams();
-  const { token, user } = useAuth();
+  const { unitId, unitName, studentId, studentName } = useLocalSearchParams();
+  const { token } = useAuth();
 
-  // Camera permission hook
   const [permission, requestPermission] = useCameraPermissions();
 
-  // Reference to the camera so we can call takePictureAsync
   const cameraRef = useRef<CameraView>(null);
 
-  // Store the captured image URI
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-
-  // Track processing state after capture
   const [processing, setProcessing] = useState(false);
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
 
-  // Fetch all questions for this course across all units
-  const fetchQuestions = async () => {
-    if (!token || !courseId) return;
-    try {
-      const questionsData = await lecturerAPI.getCourseQuestions(Number(courseId), token);
-      setQuestions(Array.isArray(questionsData) ? questionsData : []);
-    } catch (err) {
-      console.error("Failed to fetch questions:", err);
-    }
-  };
-
-  // Handle taking a picture
   const handleCapture = async () => {
     if (!cameraRef.current) return;
 
@@ -58,25 +39,19 @@ export default function ScanScreen() {
 
       if (photo?.uri) {
         setCapturedImage(photo.uri);
-        // Fetch questions after capture
-        fetchQuestions();
       }
     } catch (err) {
       console.error("Failed to capture image:", err);
     }
   };
 
-  // Discard captured image and retake
   const handleRetake = () => {
     setCapturedImage(null);
-    setSelectedQuestion(null);
-    setQuestions([]);
   };
 
-  // Proceed to result screen with captured image
-  const handleProceed = async () => {
-    if (!capturedImage || !selectedQuestion || !token) {
-      Alert.alert("Error", "Please select a question to grade");
+  const handleGrade = async () => {
+    if (!capturedImage || !token || !unitId || !studentId) {
+      Alert.alert("Error", "Missing required information");
       return;
     }
 
@@ -85,10 +60,10 @@ export default function ScanScreen() {
     try {
       const filename = capturedImage.split("/").pop() || "answer.jpg";
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
+      const type = match && match[1].toLowerCase() === "jpg" ? "image/jpeg" : match ? `image/${match[1]}` : "image/jpeg";
 
-      const result = await gradingAPI.gradeQuestion(
-        selectedQuestion.id,
+      const result = await gradingAPI.gradeUnit(
+        Number(unitId),
         Number(studentId),
         { uri: capturedImage, name: filename, type } as any,
         token
@@ -99,10 +74,9 @@ export default function ScanScreen() {
       router.push({
         pathname: "/(lecturer)/grading/result",
         params: {
-          courseId,
-          studentId,
-          imageUri: capturedImage,
-          gradingResult: JSON.stringify(result),
+          gradeId: result.grade.id,
+          unitName,
+          studentName,
         },
       });
     } catch (err: any) {
@@ -112,7 +86,6 @@ export default function ScanScreen() {
     }
   };
 
-  // ── Permission not yet determined ──
   if (!permission) {
     return (
       <View style={styles.centeredContainer}>
@@ -121,7 +94,6 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Permission denied ──
   if (!permission.granted) {
     return (
       <SafeAreaView style={styles.centeredContainer}>
@@ -142,28 +114,23 @@ export default function ScanScreen() {
     );
   }
 
-  // ── Image captured — show preview ──
   if (capturedImage) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Preview header */}
         <View style={styles.previewHeader}>
           <Text style={styles.previewTitle}>Answer Sheet Preview</Text>
           <Text style={styles.previewSubtitle}>
-            Make sure the sheet is clear and fully visible
+            {studentName} — {unitName}
           </Text>
         </View>
 
-        {/* Captured image preview */}
         <Image
           source={{ uri: capturedImage }}
           style={styles.previewImage}
           resizeMode="contain"
         />
 
-        {/* Action buttons */}
         <View style={styles.previewActions}>
-          {/* Retake button */}
           <TouchableOpacity
             style={styles.retakeBtn}
             onPress={handleRetake}
@@ -173,62 +140,29 @@ export default function ScanScreen() {
             <Text style={styles.retakeBtnText}>Retake</Text>
           </TouchableOpacity>
 
-          {/* Proceed button */}
           <TouchableOpacity
-            style={styles.proceedBtn}
-            onPress={handleProceed}
+            style={[styles.proceedBtn, processing && styles.proceedBtnDisabled]}
+            onPress={handleGrade}
             disabled={processing}
           >
             {processing ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <>
-                <Ionicons
-                  name="checkmark-outline"
-                  size={20}
-                  color={Colors.white}
-                />
-                <Text style={styles.proceedBtnText}>Grade This</Text>
+                <Ionicons name="sparkles-outline" size={20} color={Colors.white} />
+                <Text style={styles.proceedBtnText}>Send to AI</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
-
-        {/* Question selection - show after capture */}
-        {questions.length > 0 && (
-          <View style={styles.questionSelect}>
-            <Text style={styles.questionSelectTitle}>Select Question to Grade</Text>
-            {questions.map((q: any) => (
-              <TouchableOpacity
-                key={q.id}
-                style={[
-                  styles.questionOption,
-                  selectedQuestion?.id === q.id && styles.questionOptionActive,
-                ]}
-                onPress={() => setSelectedQuestion(q)}
-              >
-                <Text style={styles.questionOptionText}>
-                  {q.question_text || `Question ${q.id}`}
-                </Text>
-                <Text style={styles.questionOptionMarks}>
-                  {q.total_marks} marks
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </SafeAreaView>
     );
   }
 
-  // ── Camera view ──
   return (
     <View style={styles.container}>
-      {/* Camera fills the screen */}
       <CameraView ref={cameraRef} style={styles.camera} facing="back">
-        {/* Overlay UI on top of camera */}
         <SafeAreaView style={styles.cameraOverlay}>
-          {/* Top instruction bar */}
           <View style={styles.instructionBar}>
             <Ionicons
               name="information-circle-outline"
@@ -240,10 +174,8 @@ export default function ScanScreen() {
             </Text>
           </View>
 
-          {/* Scan frame guide */}
           <View style={styles.frameContainer}>
             <View style={styles.scanFrame}>
-              {/* Corner indicators */}
               <View style={[styles.corner, styles.cornerTL]} />
               <View style={[styles.corner, styles.cornerTR]} />
               <View style={[styles.corner, styles.cornerBL]} />
@@ -251,9 +183,7 @@ export default function ScanScreen() {
             </View>
           </View>
 
-          {/* Bottom controls */}
           <View style={styles.controls}>
-            {/* Capture button */}
             <TouchableOpacity style={styles.captureBtn} onPress={handleCapture}>
               <View style={styles.captureBtnInner} />
             </TouchableOpacity>
@@ -270,7 +200,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black,
   },
 
-  // ── Centered states (permission, loading) ──
   centeredContainer: {
     flex: 1,
     justifyContent: "center",
@@ -279,7 +208,6 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
 
-  // Permission card
   permissionCard: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
@@ -317,7 +245,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
 
-  // ── Camera view ──
   camera: {
     flex: 1,
   },
@@ -326,7 +253,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  // Top instruction bar
   instructionBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -342,7 +268,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Scan frame with corner guides
   frameContainer: {
     flex: 1,
     justifyContent: "center",
@@ -354,7 +279,6 @@ const styles = StyleSheet.create({
     position: "relative",
   },
 
-  // Corner markers
   corner: {
     position: "absolute",
     width: 24,
@@ -390,13 +314,11 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: Radius.sm,
   },
 
-  // Bottom capture controls
   controls: {
     alignItems: "center",
     paddingBottom: Spacing.xl * 1.5,
   },
 
-  // Outer capture button ring
   captureBtn: {
     width: 72,
     height: 72,
@@ -407,7 +329,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // Inner filled circle
   captureBtnInner: {
     width: 56,
     height: 56,
@@ -415,7 +336,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
 
-  // ── Preview screen ──
   previewHeader: {
     padding: Spacing.lg,
     backgroundColor: Colors.white,
@@ -441,7 +361,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
 
-  // Retake button
   retakeBtn: {
     flex: 1,
     flexDirection: "row",
@@ -459,7 +378,6 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
 
-  // Proceed button
   proceedBtn: {
     flex: 2,
     flexDirection: "row",
@@ -475,48 +393,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  proceedBtnDisabled: {
+    opacity: 0.7,
+  },
   proceedBtnText: {
     fontSize: FontSize.md,
     fontWeight: "600",
     color: Colors.white,
-  },
-  
-  // Question selection
-  questionSelect: {
-    backgroundColor: Colors.white,
-    padding: Spacing.md,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    maxHeight: 200,
-  },
-  questionSelectTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-  },
-  questionOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.xs,
-  },
-  questionOptionActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryLight,
-  },
-  questionOptionText: {
-    flex: 1,
-    fontSize: FontSize.sm,
-    color: Colors.text,
-  },
-  questionOptionMarks: {
-    fontSize: FontSize.xs,
-    color: Colors.subtext,
-    fontWeight: "600",
   },
 });

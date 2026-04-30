@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,6 +22,8 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
 const LABELS = ["A", "B", "C", "D"];
 const LABEL_COLORS = [
@@ -30,26 +33,17 @@ const LABEL_COLORS = [
   Colors.cardPurple,
 ];
 
-// Mock units — replace with API call when backend is ready
-const COURSE_UNITS = [
-  { id: 1, name: "Introduction to Programming", code: "PROG101" },
-  { id: 2, name: "Web Development Basics", code: "WEB101" },
-  { id: 3, name: "Database Management", code: "DB101" },
-  { id: 4, name: "Networking Fundamentals", code: "NET101" },
-  { id: 5, name: "Cybersecurity Basics", code: "SEC101" },
-];
-
 export default function AdminCreateQuestion() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
-  // Receive unitId from questions index screen
-  const { unitId } = useLocalSearchParams<{ unitId: string }>();
-
-  // Find the unit name to show in header
-  const selectedUnit = COURSE_UNITS.find(
-    (u) => u.id === Number(unitId),
-  );
+  // Receive unitId, unitName, unitCode from questions index screen
+  const { unitId, unitName, unitCode } = useLocalSearchParams<{
+    unitId: string;
+    unitName?: string;
+    unitCode?: string;
+  }>();
 
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,33 +61,65 @@ export default function AdminCreateQuestion() {
   };
 
   const markCorrect = (index: number) => {
-    setOptions(
-      options.map((opt, i) => ({ ...opt, is_correct: i === index })),
-    );
+    setOptions(options.map((opt, i) => ({ ...opt, is_correct: i === index })));
   };
 
   const correctIndex = options.findIndex((o) => o.is_correct);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!question.trim()) {
-      alert("Please enter the question");
+      Alert.alert("Validation Error", "Please enter the question");
       return;
     }
     if (options.some((opt) => !opt.text.trim())) {
-      alert("Please fill in all options");
+      Alert.alert("Validation Error", "Please fill in all options");
       return;
     }
     if (!options.some((opt) => opt.is_correct)) {
-      alert("Please mark the correct answer");
+      Alert.alert("Validation Error", "Please mark the correct answer");
       return;
     }
+    if (!token || !unitId) {
+      Alert.alert("Error", "Missing required data");
+      return;
+    }
+
     setLoading(true);
-    // TODO: POST to API with unitId, question, options
-    console.log({ unitId, question, options });
-    setTimeout(() => {
+    try {
+      const correctIdx = options.findIndex((o) => o.is_correct);
+
+      const questionData = {
+        question_text: question.trim(),
+        total_marks: 10,
+        option_a: options[0].text.trim(),
+        option_b: options[1].text.trim(),
+        option_c: options[2].text.trim(),
+        option_d: options[3].text.trim(),
+        correct_answer: LABELS[correctIdx],
+      };
+
+      console.log("📝 Sending question data:", questionData);
+      console.log("📝 Unit ID:", unitId);
+
+      await adminAPI.createQuestion(parseInt(unitId), questionData, token);
+
+      Alert.alert("Success", "Question created successfully", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (err: any) {
+      console.error("❌ Error creating question:", err);
+      console.error("❌ Error message:", err.message);
+      Alert.alert(
+        "Error",
+        `Failed to create question: ${err.message || "Unknown error"}`,
+        [{ text: "OK" }],
+      );
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   return (
@@ -121,7 +147,7 @@ export default function AdminCreateQuestion() {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>New Question</Text>
             <Text style={styles.headerSub}>
-              {selectedUnit ? selectedUnit.name : "Add a new MCQ question"}
+              {unitName ? unitName : "Add a new MCQ question"}
             </Text>
           </View>
         </View>
@@ -168,22 +194,6 @@ export default function AdminCreateQuestion() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Unit info card — shows which unit this question belongs to ── */}
-        {selectedUnit && (
-          <View style={styles.unitInfoCard}>
-            <View style={styles.unitInfoIcon}>
-              <Ionicons name="layers" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.unitInfoText}>
-              <Text style={styles.unitInfoLabel}>Adding question to</Text>
-              <Text style={styles.unitInfoName}>{selectedUnit.name}</Text>
-            </View>
-            <View style={styles.unitCodeBadge}>
-              <Text style={styles.unitCodeText}>{selectedUnit.code}</Text>
-            </View>
-          </View>
-        )}
-
         {/* ── Question section ── */}
         <Text style={styles.sectionLabel}>Question</Text>
         <View style={styles.formCard}>
@@ -249,9 +259,7 @@ export default function AdminCreateQuestion() {
                   >
                     <Text style={styles.optionLetter}>{LABELS[index]}</Text>
                   </View>
-                  <Text
-                    style={[styles.optionHint, isCorrect && { color }]}
-                  >
+                  <Text style={[styles.optionHint, isCorrect && { color }]}>
                     {isCorrect ? "✓ Correct answer" : `Option ${LABELS[index]}`}
                   </Text>
                   <TouchableOpacity
@@ -263,10 +271,7 @@ export default function AdminCreateQuestion() {
                   >
                     {isCorrect && (
                       <View
-                        style={[
-                          styles.radioDot,
-                          { backgroundColor: color },
-                        ]}
+                        style={[styles.radioDot, { backgroundColor: color }]}
                       />
                     )}
                   </TouchableOpacity>

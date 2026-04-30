@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,23 +22,26 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
 export default function EditCourse() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams();
+  const { token } = useAuth();
+  const params = useLocalSearchParams<{ id: string; title: string; code: string; description: string }>();
 
-  // TODO: Replace with real API fetch by id
-  const [name, setName] = useState("Bachelor of Computer Science");
-  const [code, setCode] = useState("BCS");
+  const [title, setTitle] = useState(params.title ?? "");
+  const [code, setCode] = useState(params.code ?? "");
+  const [description, setDescription] = useState(params.description ?? "");
   const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({ name: "", code: "" });
+  const [errors, setErrors] = useState({ title: "", code: "" });
 
   const validate = () => {
-    const e = { name: "", code: "" };
+    const e = { title: "", code: "" };
     let valid = true;
-    if (!name.trim()) { e.name = "Course name is required"; valid = false; }
+    if (!title.trim()) { e.title = "Course title is required"; valid = false; }
     if (!code.trim()) { e.code = "Course code is required"; valid = false; }
     else if (code.trim().length > 10) { e.code = "Code must be 10 characters or less"; valid = false; }
     setErrors(e);
@@ -47,11 +51,20 @@ export default function EditCourse() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: PUT to API
-    setTimeout(() => {
+    try {
+      await adminAPI.updateCourse(
+        Number(params.id),
+        { title: title.trim(), code: code.trim(), description: description.trim() || undefined },
+        token!
+      );
+      Alert.alert("Success", "Course updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to update course");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   return (
@@ -77,7 +90,7 @@ export default function EditCourse() {
             <Text style={styles.headerSub}>Update course details</Text>
           </View>
           <View style={styles.idBadge}>
-            <Text style={styles.idBadgeText}>#{id}</Text>
+            <Text style={styles.idBadgeText}>#{params.id}</Text>
           </View>
         </View>
 
@@ -91,10 +104,7 @@ export default function EditCourse() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.sectionLabel}>Course Details</Text>
@@ -105,12 +115,12 @@ export default function EditCourse() {
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Course Name"
+                label="Course Title"
                 placeholder="e.g. Bachelor of Computer Science"
-                value={name}
-                onChangeText={(t) => { setName(t); setErrors((p) => ({ ...p, name: "" })); }}
+                value={title}
+                onChangeText={(t) => { setTitle(t); setErrors((p) => ({ ...p, title: "" })); }}
                 icon="school-outline"
-                error={errors.name}
+                error={errors.title}
               />
             </View>
           </View>
@@ -135,6 +145,23 @@ export default function EditCourse() {
               />
             </View>
           </View>
+
+          <View style={styles.fieldDivider} />
+
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
+              <Ionicons name="document-text-outline" size={18} color={Colors.accent} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Description (Optional)"
+                placeholder="Brief description of the course"
+                value={description}
+                onChangeText={setDescription}
+                icon="document-text-outline"
+              />
+            </View>
+          </View>
         </View>
 
         {/* Live preview */}
@@ -146,7 +173,7 @@ export default function EditCourse() {
           </View>
           <View style={styles.previewInfo}>
             <Text style={styles.previewName} numberOfLines={1}>
-              {name || "Course Name"}
+              {title || "Course Title"}
             </Text>
             <View style={styles.previewMeta}>
               {code ? (

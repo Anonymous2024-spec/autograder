@@ -66,6 +66,33 @@ export default function StudentsScreen() {
           }),
       },
       {
+        text: "Enroll",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/students/enroll",
+            params: {
+              id: student.id.toString(),
+              name: student.user?.full_name ?? "",
+              regNo: student.student_id_number ?? "",
+            },
+          }),
+      },
+      {
+        text: "Edit",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/students/edit",
+            params: {
+              id: student.id,
+              userId: student.user_id,
+              name: student.user?.full_name ?? "",
+              email: student.user?.email ?? "",
+              regNo: student.student_id_number ?? "",
+              department: student.department ?? "",
+            },
+          }),
+      },
+      {
         text: "Delete",
         style: "destructive",
         onPress: () => confirmDelete(student.user_id, name),

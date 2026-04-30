@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
@@ -20,48 +21,36 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
-const COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    students: 42,
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    students: 38,
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
-    students: 44,
-    color: Colors.cardGreen,
-  },
-];
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function CoursesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
+
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const filtered = COURSES.filter(
+  useEffect(() => {
+    if (!token) return;
+    adminAPI.getAllCourses(token)
+      .then((data) => setCourses(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = courses.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase()),
+      (c.title ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.code ?? "").toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleOptions = (course: {
-    id: number;
-    name: string;
-    code: string;
-  }) => {
-    Alert.alert(course.name, "What would you like to do?", [
+  const handleOptions = (course: any) => {
+    Alert.alert(course.title, "What would you like to do?", [
       {
         text: "Manage Units",
         onPress: () =>
@@ -69,7 +58,7 @@ export default function CoursesScreen() {
             pathname: "/(admin)/courses/units",
             params: {
               courseId: course.id,
-              courseName: course.name,
+              courseName: course.title,
               courseCode: course.code,
             },
           }),
@@ -79,25 +68,33 @@ export default function CoursesScreen() {
         onPress: () =>
           router.push({
             pathname: "/(admin)/courses/edit",
-            params: { id: course.id },
+            params: { id: course.id, title: course.title, code: course.code, description: course.description ?? "" },
           }),
       },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => confirmDelete(course.id),
+        onPress: () => confirmDelete(course.id, course.title),
       },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
-  const confirmDelete = (id: number) => {
-    Alert.alert("Delete Course", "Are you sure?", [
+  const confirmDelete = (id: number, title: string) => {
+    Alert.alert("Delete Course", `Delete "${title}"? This will also remove all units and questions.`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => console.log("Delete course:", id),
+        onPress: async () => {
+          if (!token) return;
+          try {
+            await adminAPI.deleteCourse(id, token);
+            setCourses((prev) => prev.filter((c) => c.id !== id));
+          } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to delete course");
+          }
+        },
       },
     ]);
   };
@@ -124,7 +121,7 @@ export default function CoursesScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Courses</Text>
             <Text style={styles.headerSub}>
-              {COURSES.length} registered courses
+              {courses.length} registered course{courses.length !== 1 ? "s" : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -166,90 +163,90 @@ export default function CoursesScreen() {
       </View>
 
       {/* ── List ── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View
-              style={[
-                styles.emptyIconBox,
-                { backgroundColor: Colors.successLight },
-              ]}
-            >
-              <Ionicons
-                name="book-outline"
-                size={40}
-                color={Colors.cardGreen}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>No Courses Found</Text>
-            <Text style={styles.emptyText}>
-              {search ? "Try a different search" : "Tap + to add a course"}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleOptions(item)}
-            activeOpacity={0.85}
-          >
-            {/* Color bar on left */}
-            <View style={[styles.colorBar, { backgroundColor: item.color }]} />
-
-            {/* Icon */}
-            <View
-              style={[styles.cardIcon, { backgroundColor: item.color + "18" }]}
-            >
-              <Ionicons name="book" size={22} color={item.color} />
-            </View>
-
-            {/* Info */}
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName} numberOfLines={2}>
-                {item.name}
+      {loading ? (
+        <ActivityIndicator color={Colors.cardGreen} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View
+                style={[
+                  styles.emptyIconBox,
+                  { backgroundColor: Colors.successLight },
+                ]}
+              >
+                <Ionicons
+                  name="book-outline"
+                  size={40}
+                  color={Colors.cardGreen}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>No Courses Found</Text>
+              <Text style={styles.emptyText}>
+                {search ? "Try a different search" : "Tap + to add a course"}
               </Text>
-              <View style={styles.cardBottom}>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const color = COURSE_COLORS[index % COURSE_COLORS.length];
+            return (
+              <TouchableOpacity
+                style={styles.card}
+                onPress={() => handleOptions(item)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.colorBar, { backgroundColor: color }]} />
                 <View
-                  style={[
-                    styles.codeBadge,
-                    { backgroundColor: item.color + "18" },
-                  ]}
+                  style={[styles.cardIcon, { backgroundColor: color + "18" }]}
                 >
-                  <Text style={[styles.codeBadgeText, { color: item.color }]}>
-                    {item.code}
-                  </Text>
+                  <Ionicons name="book" size={22} color={color} />
                 </View>
-                <View style={styles.studentCount}>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <View style={styles.cardBottom}>
+                    <View
+                      style={[
+                        styles.codeBadge,
+                        { backgroundColor: color + "18" },
+                      ]}
+                    >
+                      <Text style={[styles.codeBadgeText, { color }]}>
+                        {item.code}
+                      </Text>
+                    </View>
+                    <View style={styles.studentCount}>
+                      <Ionicons
+                        name="layers-outline"
+                        size={12}
+                        color={Colors.subtext}
+                      />
+                      <Text style={styles.studentCountText}>
+                        {(item.units ?? []).length} unit{(item.units ?? []).length !== 1 ? "s" : ""}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.menuBtn}
+                  onPress={() => handleOptions(item)}
+                >
                   <Ionicons
-                    name="people-outline"
-                    size={12}
+                    name="ellipsis-vertical"
+                    size={18}
                     color={Colors.subtext}
                   />
-                  <Text style={styles.studentCountText}>
-                    {item.students} students
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Menu */}
-            <TouchableOpacity
-              style={styles.menuBtn}
-              onPress={() => handleOptions(item)}
-            >
-              <Ionicons
-                name="ellipsis-vertical"
-                size={18}
-                color={Colors.subtext}
-              />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-      />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
