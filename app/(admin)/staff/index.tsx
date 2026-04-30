@@ -55,6 +55,21 @@ export default function StaffScreen() {
     const name = member.user?.full_name ?? "Lecturer";
     Alert.alert(name, "What would you like to do?", [
       {
+        text: "Edit",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/staff/edit",
+            params: {
+              id: member.id,
+              userId: member.user_id,
+              name: member.user?.full_name ?? "",
+              email: member.user?.email ?? "",
+              department: member.department ?? "",
+              role: member.user?.role ?? "lecturer",
+            },
+          }),
+      },
+      {
         text: "Delete",
         style: "destructive",
         onPress: () => confirmDelete(member.user_id, name),

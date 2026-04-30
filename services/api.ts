@@ -27,11 +27,23 @@ export async function apiCall(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "API request failed");
+    let message = "API request failed";
+    try {
+      const error = await response.json();
+      message = error.detail || message;
+    } catch {
+      // Response body is not JSON — keep default message
+    }
+    throw new Error(message);
   }
 
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 // ============ AUTH ENDPOINTS ============
@@ -101,6 +113,53 @@ export const adminAPI = {
 
   deleteUser: (userId: number, token: string) =>
     apiCall(`/admin/users/${userId}`, { method: "DELETE", token }),
+
+  updateUser: (
+    userId: number,
+    data: {
+      full_name?: string;
+      email?: string;
+      student_id_number?: string;
+      department?: string;
+      specialization?: string;
+    },
+    token: string
+  ) =>
+    apiCall(`/admin/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  getLecturer: (lecturerId: number, token: string) =>
+    apiCall(`/admin/lecturers/${lecturerId}`, { token }),
+
+  getCourse: (courseId: number, token: string) =>
+    apiCall(`/admin/courses/${courseId}`, { token }),
+
+  createCourse: (
+    data: { code: string; title: string; description?: string; lecturer_id: number },
+    token: string
+  ) =>
+    apiCall("/admin/courses", {
+      method: "POST",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  updateCourse: (
+    courseId: number,
+    data: { code?: string; title?: string; description?: string },
+    token: string
+  ) =>
+    apiCall(`/admin/courses/${courseId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      token,
+    }),
+
+  deleteCourse: (courseId: number, token: string) =>
+    apiCall(`/admin/courses/${courseId}`, { method: "DELETE", token }),
 };
 
 // ============ LECTURER ENDPOINTS ============

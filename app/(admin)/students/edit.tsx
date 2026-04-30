@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,28 +22,36 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
 export default function EditStudent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams();
+  const { token } = useAuth();
+  const params = useLocalSearchParams<{
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    regNo: string;
+    department: string;
+  }>();
 
-  // TODO: Replace with real API fetch by id
-  const [name, setName] = useState("John Doe");
-  const [regNo, setRegNo] = useState("23/U/1234");
-  const [studentNo, setStudentNo] = useState("2300712345");
-  const [courseId, setCourseId] = useState("1");
+  const [name, setName] = useState(params.name ?? "");
+  const [email, setEmail] = useState(params.email ?? "");
+  const [regNo, setRegNo] = useState(params.regNo ?? "");
+  const [department, setDepartment] = useState(params.department ?? "");
   const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({ name: "", regNo: "", studentNo: "", courseId: "" });
+  const [errors, setErrors] = useState({ name: "", email: "", regNo: "" });
 
   const validate = () => {
-    const e = { name: "", regNo: "", studentNo: "", courseId: "" };
+    const e = { name: "", email: "", regNo: "" };
     let valid = true;
     if (!name.trim()) { e.name = "Full name is required"; valid = false; }
-    if (!regNo.trim()) { e.regNo = "Registration number is required"; valid = false; }
-    if (!studentNo.trim()) { e.studentNo = "Student number is required"; valid = false; }
-    if (!courseId.trim()) { e.courseId = "Course ID is required"; valid = false; }
+    if (!email.trim() || !email.includes("@")) { e.email = "Valid email is required"; valid = false; }
+    if (!regNo.trim()) { e.regNo = "Student ID number is required"; valid = false; }
     setErrors(e);
     return valid;
   };
@@ -50,11 +59,25 @@ export default function EditStudent() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: PUT to API
-    setTimeout(() => {
+    try {
+      await adminAPI.updateUser(
+        Number(params.userId),
+        {
+          full_name: name.trim(),
+          email: email.trim(),
+          student_id_number: regNo.trim(),
+          department: department.trim() || undefined,
+        },
+        token!
+      );
+      Alert.alert("Success", "Student updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to update student");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
   return (
@@ -62,7 +85,6 @@ export default function EditStudent() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      {/* ── Gradient header ── */}
       <LinearGradient
         colors={["#0D1F6B", "#1A3BAA", Colors.primary]}
         start={{ x: 0, y: 0 }}
@@ -81,7 +103,7 @@ export default function EditStudent() {
             <Text style={styles.headerSub}>Update student details</Text>
           </View>
           <View style={styles.idBadge}>
-            <Text style={styles.idBadgeText}>#{id}</Text>
+            <Text style={styles.idBadgeText}>#{params.id}</Text>
           </View>
         </View>
 
@@ -95,10 +117,7 @@ export default function EditStudent() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.sectionLabel}>Student Identity</Text>
@@ -123,11 +142,30 @@ export default function EditStudent() {
 
           <View style={styles.fieldRow}>
             <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
-              <Ionicons name="card-outline" size={18} color={Colors.accent} />
+              <Ionicons name="mail-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Registration Number"
+                label="Email Address"
+                placeholder="e.g. student@example.com"
+                value={email}
+                onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
+                keyboardType="email-address"
+                icon="mail-outline"
+                error={errors.email}
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldDivider} />
+
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.successLight }]}>
+              <Ionicons name="card-outline" size={18} color={Colors.success} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Student ID Number"
                 placeholder="e.g. 23/U/1234"
                 value={regNo}
                 onChangeText={(t) => { setRegNo(t); setErrors((p) => ({ ...p, regNo: "" })); }}
@@ -140,38 +178,16 @@ export default function EditStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View style={[styles.fieldIcon, { backgroundColor: Colors.successLight }]}>
-              <Ionicons name="id-card-outline" size={18} color={Colors.success} />
-            </View>
-            <View style={styles.fieldInput}>
-              <Input
-                label="Student Number"
-                placeholder="e.g. 2300712345"
-                value={studentNo}
-                onChangeText={(t) => { setStudentNo(t); setErrors((p) => ({ ...p, studentNo: "" })); }}
-                keyboardType="numeric"
-                icon="id-card-outline"
-                error={errors.studentNo}
-              />
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>Enrollment</Text>
-        <View style={styles.formCard}>
-          <View style={styles.fieldRow}>
             <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons name="book-outline" size={18} color={Colors.cardPurple} />
+              <Ionicons name="business-outline" size={18} color={Colors.cardPurple} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Course ID"
-                placeholder="e.g. 1"
-                value={courseId}
-                onChangeText={(t) => { setCourseId(t); setErrors((p) => ({ ...p, courseId: "" })); }}
-                keyboardType="numeric"
-                icon="book-outline"
-                error={errors.courseId}
+                label="Department (Optional)"
+                placeholder="e.g. Computer Science"
+                value={department}
+                onChangeText={setDepartment}
+                icon="business-outline"
               />
             </View>
           </View>
@@ -180,7 +196,7 @@ export default function EditStudent() {
         <View style={styles.infoNote}>
           <Ionicons name="warning-outline" size={15} color={Colors.warning} />
           <Text style={[styles.infoNoteText, { color: Colors.warning }]}>
-            Changes to registration number or student number must match official records.
+            Changes to student ID number must match official records.
           </Text>
         </View>
       </ScrollView>

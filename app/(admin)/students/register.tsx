@@ -151,7 +151,6 @@ export default function RegisterStudent() {
                 onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
                 icon="mail-outline"
                 keyboardType="email-address"
-                autoCapitalize="none"
                 error={errors.email}
               />
             </View>
