@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
 import {
   Alert,
   Dimensions,
@@ -20,92 +21,75 @@ import {
   Spacing,
 } from "../../constants";
 import { useAuth } from "../../context/AuthContext";
+import { lecturerAPI } from "../../services/api";
 
 const { width } = Dimensions.get("window");
 
-// Main action cards
-const ACTIONS = [
-  {
-    id: "courses",
-    title: "My Courses",
-    subtitle: "View & manage course units",
-    icon: "book",
-    route: "/(lecturer)/courses",
-    gradient: ["#0D7377", "#14919B"] as [string, string],
-    stat: "8",
-    statLabel: "courses assigned",
-    tag: "Courses",
-  },
-  {
-    id: "questions",
-    title: "Questions",
-    subtitle: "Create & manage MCQ questions",
-    icon: "help-circle",
-    route: "/(lecturer)/questions",
-    gradient: ["#1A56DB", "#0D3492"] as [string, string],
-    stat: "340",
-    statLabel: "questions added",
-    tag: "Question Bank",
-  },
-  {
-    id: "grading",
-    title: "Grade Students",
-    subtitle: "Scan answer sheets & auto-mark",
-    icon: "scan",
-    route: "/(lecturer)/grading",
-    gradient: ["#0EA5E9", "#0369A1"] as [string, string],
-    stat: "48",
-    statLabel: "students graded",
-    tag: "Auto Marking",
-  },
-  {
-    id: "students",
-    title: "My Students",
-    subtitle: "View student results & progress",
-    icon: "people",
-    route: "/(lecturer)/students",
-    gradient: ["#DC2626", "#B91C1C"] as [string, string],
-    stat: "156",
-    statLabel: "students enrolled",
-    tag: "Student Progress",
-  },
-];
-
-// Activity feed mock — TODO: Replace with API
-const RECENT = [
-  {
-    id: 1,
-    action: "Graded",
-    name: "John Doe",
-    score: "18/20",
-    time: "2 hrs ago",
-    icon: "checkmark-circle",
-    color: Colors.success,
-  },
-  {
-    id: 2,
-    action: "Added question",
-    name: "What does RAM stand for?",
-    score: "",
-    time: "Yesterday",
-    icon: "add-circle",
-    color: Colors.primary,
-  },
-  {
-    id: 3,
-    action: "Graded",
-    name: "Jane Smith",
-    score: "15/20",
-    time: "Yesterday",
-    icon: "checkmark-circle",
-    color: Colors.success,
-  },
-];
-
 export default function LecturerDashboard() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const insets = useSafeAreaInsets();
+
+  const [questionCount, setQuestionCount] = useState(0);
+  const [gradedCount, setGradedCount] = useState(0);
+  const [courseCount, setCourseCount] = useState(0);
+  const [studentCount, setStudentCount] = useState(0);
+  const [pendingCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchDashboardStats();
+      }
+    }, [token])
+  );
+
+  const fetchDashboardStats = async () => {
+    try {
+      const courses = await lecturerAPI.getCourses(token!);
+      const courseList = Array.isArray(courses) ? courses : [];
+      setCourseCount(courseList.length);
+
+      let totalQuestions = 0;
+      let totalGrades = 0;
+      let totalStudents = 0;
+
+      for (const course of courseList) {
+        try {
+          const questions = await lecturerAPI.getCourseQuestions(course.id, token!);
+          if (Array.isArray(questions)) {
+            totalQuestions += questions.length;
+          }
+        } catch (err) {
+          console.error(`Error fetching questions for course ${course.id}:`, err);
+        }
+
+        try {
+          const grades = await lecturerAPI.getCourseGrades(course.id, token!);
+          if (Array.isArray(grades)) {
+            totalGrades += grades.length;
+          }
+        } catch (err) {
+          console.error(`Error fetching grades for course ${course.id}:`, err);
+        }
+
+        try {
+          const students = await lecturerAPI.getCourseStudents(course.id, token!);
+          if (Array.isArray(students)) {
+            totalStudents += students.length;
+          }
+        } catch (err) {
+          console.error(`Error fetching students for course ${course.id}:`, err);
+        }
+      }
+
+      setQuestionCount(totalQuestions);
+      setGradedCount(totalGrades);
+      setStudentCount(totalStudents);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -128,6 +112,53 @@ export default function LecturerDashboard() {
       .toUpperCase()
       .slice(0, 2);
 
+  const ACTIONS = [
+    {
+      id: "courses",
+      title: "My Courses",
+      subtitle: "View & manage course units",
+      icon: "book",
+      route: "/(lecturer)/courses",
+      gradient: ["#0D7377", "#14919B"] as [string, string],
+      stat: courseCount.toString(),
+      statLabel: "courses assigned",
+      tag: "Courses",
+    },
+    {
+      id: "questions",
+      title: "Questions",
+      subtitle: "Create & manage MCQ questions",
+      icon: "help-circle",
+      route: "/(lecturer)/questions",
+      gradient: ["#1A56DB", "#0D3492"] as [string, string],
+      stat: questionCount.toString(),
+      statLabel: "questions added",
+      tag: "Question Bank",
+    },
+    {
+      id: "grading",
+      title: "Grade Students",
+      subtitle: "Scan answer sheets & auto-mark",
+      icon: "scan",
+      route: "/(lecturer)/grading",
+      gradient: ["#0EA5E9", "#0369A1"] as [string, string],
+      stat: gradedCount.toString(),
+      statLabel: "students graded",
+      tag: "Auto Marking",
+    },
+    {
+      id: "students",
+      title: "My Students",
+      subtitle: "View student results & progress",
+      icon: "people",
+      route: "/(lecturer)/students",
+      gradient: ["#DC2626", "#B91C1C"] as [string, string],
+      stat: studentCount.toString(),
+      statLabel: "students enrolled",
+      tag: "Student Progress",
+    },
+  ];
+
   return (
     <View style={styles.root}>
       {/* ── Gradient header ── */}
@@ -149,14 +180,14 @@ export default function LecturerDashboard() {
             onPress={() => router.push({ pathname: "/(lecturer)/profile" })}
           >
             <Text style={styles.avatarText}>
-              {getInitials(user?.username ?? "LT")}
+              {getInitials(user?.full_name ?? "LT")}
             </Text>
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
             <Text style={styles.headerLabel}>Signed in as</Text>
             <Text style={styles.headerName} numberOfLines={1}>
-              {user?.username ?? "Lecturer"}
+              {user?.full_name ?? "Lecturer"}
             </Text>
           </View>
 
@@ -176,7 +207,7 @@ export default function LecturerDashboard() {
         {/* Greeting */}
         <View style={styles.greetingSection}>
           <Text style={styles.greetingLine}>Good day 👋</Text>
-          <Text style={styles.greetingBig}>{user?.username ?? "Lecturer"}</Text>
+          <Text style={styles.greetingBig}>{user?.full_name ?? "Lecturer"}</Text>
           <View style={styles.rolePill}>
             <View style={styles.roleDot} />
             <Text style={styles.rolePillText}>Lecturer · Active</Text>
@@ -186,22 +217,22 @@ export default function LecturerDashboard() {
         {/* Stats strip */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>340</Text>
+            <Text style={styles.statNum}>{questionCount}</Text>
             <Text style={styles.statLbl}>Questions</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>48</Text>
+            <Text style={styles.statNum}>{gradedCount}</Text>
             <Text style={styles.statLbl}>Graded</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>8</Text>
+            <Text style={styles.statNum}>{courseCount}</Text>
             <Text style={styles.statLbl}>Courses</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statNum}>3</Text>
+            <Text style={styles.statNum}>{pendingCount}</Text>
             <Text style={styles.statLbl}>Pending</Text>
           </View>
         </View>
@@ -355,59 +386,6 @@ export default function LecturerDashboard() {
             </LinearGradient>
             <Text style={styles.toolLabel}>My{"\n"}Profile</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* ── Recent activity ── */}
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.activityCard}>
-          {RECENT.map((item, index) => (
-            <View key={item.id}>
-              <View style={styles.activityRow}>
-                {/* Icon */}
-                <View
-                  style={[
-                    styles.activityIcon,
-                    { backgroundColor: item.color + "18" },
-                  ]}
-                >
-                  <Ionicons
-                    name={item.icon as any}
-                    size={18}
-                    color={item.color}
-                  />
-                </View>
-
-                {/* Info */}
-                <View style={styles.activityInfo}>
-                  <Text style={styles.activityAction}>{item.action}</Text>
-                  <Text style={styles.activityName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                </View>
-
-                {/* Right */}
-                <View style={styles.activityRight}>
-                  {item.score ? (
-                    <View style={styles.scoreBadge}>
-                      <Text style={styles.scoreBadgeText}>{item.score}</Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.activityTime}>{item.time}</Text>
-                </View>
-              </View>
-
-              {/* Divider between items */}
-              {index < RECENT.length - 1 && (
-                <View style={styles.activityDivider} />
-              )}
-            </View>
-          ))}
         </View>
 
         {/* ── Info bar ── */}
@@ -597,11 +575,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.subtext,
   },
-  seeAll: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.primary,
-  },
 
   // ── Action cards ──
   actionCard: {
@@ -736,67 +709,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 50,
     backgroundColor: Colors.border,
-  },
-
-  // ── Activity card ──
-  activityCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.sm,
-  },
-  activityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-    gap: Spacing.md,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  activityInfo: {
-    flex: 1,
-  },
-  activityAction: {
-    fontSize: FontSize.xs,
-    color: Colors.subtext,
-    marginBottom: 2,
-  },
-  activityName: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.text,
-  },
-  activityRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  scoreBadge: {
-    backgroundColor: Colors.successLight,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-  },
-  scoreBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.success,
-  },
-  activityTime: {
-    fontSize: FontSize.xs,
-    color: Colors.placeholder,
-  },
-  activityDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginLeft: 56,
   },
 
   // ── Info bar ──

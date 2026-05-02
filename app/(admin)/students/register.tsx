@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  FlatList,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,69 +24,45 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { authAPI, adminAPI } from "../../../services/api";
 
-// Mock courses data
-const COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
-    color: Colors.cardGreen,
-  },
-];
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function RegisterStudent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password] = useState("student123");
   const [regNo, setRegNo] = useState("");
-  const [studentNo, setStudentNo] = useState("");
-  const [courseId, setCourseId] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState<
-    (typeof COURSES)[0] | null
-  >(null);
-  const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({
-    name: "",
-    regNo: "",
-    studentNo: "",
-    courseId: "",
-  });
+  const [errors, setErrors] = useState({ name: "", email: "", regNo: "" });
+
+  const [courses, setCourses] = useState<any[]>([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [showCoursePicker, setShowCoursePicker] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [registeredStudentId, setRegisteredStudentId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (token && showCoursePicker) {
+      adminAPI.getAllCourses(token)
+        .then((data) => setCourses(Array.isArray(data) ? data : []))
+        .catch(console.error);
+    }
+  }, [token, showCoursePicker]);
 
   const validate = () => {
-    const e = { name: "", regNo: "", studentNo: "", courseId: "" };
+    const e = { name: "", email: "", regNo: "" };
     let valid = true;
-    if (!name.trim()) {
-      e.name = "Full name is required";
-      valid = false;
-    }
-    if (!regNo.trim()) {
-      e.regNo = "Registration number is required";
-      valid = false;
-    }
-    if (!studentNo.trim()) {
-      e.studentNo = "Student number is required";
-      valid = false;
-    }
-    if (!selectedCourse) {
-      e.courseId = "Course is required";
-      valid = false;
-    }
+    if (!name.trim()) { e.name = "Full name is required"; valid = false; }
+    if (!email.trim() || !email.includes("@")) { e.email = "Valid email is required"; valid = false; }
+    if (!regNo.trim()) { e.regNo = "Student ID number is required"; valid = false; }
     setErrors(e);
     return valid;
   };
@@ -93,11 +70,63 @@ export default function RegisterStudent() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: POST to API
-    setTimeout(() => {
+    try {
+      const result = await authAPI.signup(
+        email.trim(),
+        password,
+        name.trim(),
+        "student",
+        regNo.trim(),
+        department.trim() || undefined
+      );
+      if (result.detail) throw new Error(result.detail);
+      setRegisteredStudentId(result.student?.id ?? result.id);
+      setShowCoursePicker(true);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to register student");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
+  };
+
+  const toggleCourse = (courseId: number) => {
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const handleEnrollAndFinish = async () => {
+    if (!token || !registeredStudentId) return;
+    if (selectedCourseIds.length === 0) {
+      setShowCoursePicker(false);
+      Alert.alert("Success", `Student ${name} registered successfully!`, [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+      return;
+    }
+    setEnrolling(true);
+    let enrolledCount = 0;
+    for (const courseId of selectedCourseIds) {
+      try {
+        await adminAPI.enrollStudent(registeredStudentId, courseId, token);
+        enrolledCount++;
+      } catch (err) {
+        console.error(`Failed to enroll in course ${courseId}:`, err);
+      }
+    }
+    setEnrolling(false);
+    Alert.alert(
+      "Success",
+      `Student registered and enrolled in ${enrolledCount} course(s).`,
+      [{ text: "OK", onPress: () => router.back() }]
+    );
+  };
+
+  const handleSkipEnrollment = () => {
+    setShowCoursePicker(false);
+    Alert.alert("Success", `Student ${name} registered successfully!`, [
+      { text: "OK", onPress: () => router.back() },
+    ]);
   };
 
   return (
@@ -143,37 +172,22 @@ export default function RegisterStudent() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Identity section ── */}
         <Text style={styles.sectionLabel}>Student Identity</Text>
         <View style={styles.formCard}>
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.primaryLight },
-              ]}
-            >
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color={Colors.primary}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="person-outline" size={18} color={Colors.primary} />
             </View>
             <View style={styles.fieldInput}>
               <Input
                 label="Full Name"
                 placeholder="e.g. John Doe"
                 value={name}
-                onChangeText={(t) => {
-                  setName(t);
-                  setErrors((p) => ({ ...p, name: "" }));
-                }}
+                onChangeText={(t) => { setName(t); setErrors((p) => ({ ...p, name: "" })); }}
                 icon="person-outline"
                 error={errors.name}
               />
@@ -183,23 +197,34 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.accentLight },
-              ]}
-            >
-              <Ionicons name="card-outline" size={18} color={Colors.accent} />
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
+              <Ionicons name="mail-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Registration Number"
+                label="Email Address"
+                placeholder="e.g. student@example.com"
+                value={email}
+                onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
+                icon="mail-outline"
+                keyboardType="email-address"
+                error={errors.email}
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldDivider} />
+
+          <View style={styles.fieldRow}>
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.successLight }]}>
+              <Ionicons name="card-outline" size={18} color={Colors.success} />
+            </View>
+            <View style={styles.fieldInput}>
+              <Input
+                label="Student ID Number"
                 placeholder="e.g. 23/U/1234"
                 value={regNo}
-                onChangeText={(t) => {
-                  setRegNo(t);
-                  setErrors((p) => ({ ...p, regNo: "" }));
-                }}
+                onChangeText={(t) => { setRegNo(t); setErrors((p) => ({ ...p, regNo: "" })); }}
                 icon="card-outline"
                 error={errors.regNo}
               />
@@ -209,177 +234,34 @@ export default function RegisterStudent() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.successLight },
-              ]}
-            >
-              <Ionicons
-                name="id-card-outline"
-                size={18}
-                color={Colors.success}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
+              <Ionicons name="business-outline" size={18} color={Colors.cardPurple} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Student Number"
-                placeholder="e.g. 2300712345"
-                value={studentNo}
-                onChangeText={(t) => {
-                  setStudentNo(t);
-                  setErrors((p) => ({ ...p, studentNo: "" }));
-                }}
-                keyboardType="numeric"
-                icon="id-card-outline"
-                error={errors.studentNo}
+                label="Department (Optional)"
+                placeholder="e.g. Computer Science"
+                value={department}
+                onChangeText={setDepartment}
+                icon="business-outline"
               />
             </View>
           </View>
         </View>
 
-        {/* ── Enrollment section ── */}
-        <Text style={styles.sectionLabel}>Enrollment</Text>
-        <View style={styles.formCard}>
-          <TouchableOpacity
-            style={styles.fieldRow}
-            onPress={() => setShowCoursePicker(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
-              <Ionicons
-                name="book-outline"
-                size={18}
-                color={Colors.cardPurple}
-              />
-            </View>
-            <View style={styles.fieldInput}>
-              <Text style={styles.pickLabel}>Course</Text>
-              <View style={styles.pickButton}>
-                {selectedCourse ? (
-                  <View>
-                    <Text style={styles.pickButtonText}>
-                      {selectedCourse.name}
-                    </Text>
-                    <Text style={styles.pickButtonSubtext}>
-                      {selectedCourse.code}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pickPlaceholder}>Select a course...</Text>
-                )}
-                <Ionicons
-                  name="chevron-down-outline"
-                  size={20}
-                  color={selectedCourse ? Colors.primary : Colors.placeholder}
-                />
-              </View>
-              {errors.courseId && (
-                <Text style={styles.errorText}>{errors.courseId}</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Info note ── */}
+        {/* Password info */}
         <View style={styles.infoNote}>
-          <Ionicons
-            name="information-circle-outline"
-            size={15}
-            color={Colors.primary}
-          />
+          <Ionicons name="information-circle-outline" size={15} color={Colors.primary} />
           <Text style={styles.infoNoteText}>
-            Select the course this student is enrolled in. This determines their
-            course units and assessment schedule.
+            Default password: <Text style={{ fontWeight: "700" }}>student123</Text>.
+            The student can change it after first login.
           </Text>
         </View>
       </ScrollView>
 
-      {/* Course Picker Modal */}
-      <Modal
-        visible={showCoursePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCoursePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View
-              style={[
-                styles.modalHeader,
-                { paddingTop: insets.top + Spacing.md },
-              ]}
-            >
-              <Text style={styles.modalTitle}>Select Course</Text>
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setShowCoursePicker(false)}
-              >
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={COURSES}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.courseList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.courseOption,
-                    selectedCourse?.id === item.id && styles.courseOptionActive,
-                  ]}
-                  onPress={() => {
-                    setSelectedCourse(item);
-                    setCourseId(item.id.toString());
-                    setShowCoursePicker(false);
-                    setErrors((p) => ({ ...p, courseId: "" }));
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={[
-                      styles.courseOptionIcon,
-                      { backgroundColor: item.color + "20" },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.courseOptionCode, { color: item.color }]}
-                    >
-                      {item.code}
-                    </Text>
-                  </View>
-                  <View style={styles.courseOptionInfo}>
-                    <Text style={styles.courseOptionName}>{item.name}</Text>
-                    <Text style={styles.courseOptionSubtext}>
-                      ID: {item.id}
-                    </Text>
-                  </View>
-                  {selectedCourse?.id === item.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={Colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
-
       {/* ── Sticky bottom bar ── */}
-      <View
-        style={[
-          styles.bottomBar,
-          { paddingBottom: insets.bottom + Spacing.md },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
 
@@ -396,20 +278,85 @@ export default function RegisterStudent() {
             style={styles.submitGradient}
           >
             {loading ? (
-              <Text style={styles.submitBtnText}>Registering...</Text>
+              <ActivityIndicator size="small" color={Colors.white} />
             ) : (
               <>
-                <Ionicons
-                  name="person-add-outline"
-                  size={18}
-                  color={Colors.white}
-                />
+                <Ionicons name="person-add-outline" size={18} color={Colors.white} />
                 <Text style={styles.submitBtnText}>Register Student</Text>
               </>
             )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* ── Course Enrollment Modal ── */}
+      <Modal visible={showCoursePicker} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Enroll in Courses</Text>
+                <Text style={styles.modalSub}>Select courses to enroll {name} in</Text>
+              </View>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={handleSkipEnrollment}>
+                <Ionicons name="close" size={24} color={Colors.subtext} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.courseList} showsVerticalScrollIndicator={false}>
+              {courses.length === 0 ? (
+                <Text style={styles.noCoursesText}>No courses available</Text>
+              ) : (
+                courses.map((course, idx) => {
+                  const isSelected = selectedCourseIds.includes(course.id);
+                  const color = COURSE_COLORS[idx % COURSE_COLORS.length];
+                  return (
+                    <TouchableOpacity
+                      key={course.id}
+                      style={[styles.courseOption, isSelected && styles.courseOptionActive]}
+                      onPress={() => toggleCourse(course.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.courseOptionIcon, { backgroundColor: isSelected ? color : color + "18" }]}>
+                        <Ionicons name="book" size={20} color={isSelected ? Colors.white : color} />
+                      </View>
+                      <View style={styles.courseOptionInfo}>
+                        <Text style={styles.courseOptionName}>{course.title}</Text>
+                        <Text style={styles.courseOptionSubtext}>{course.code}</Text>
+                      </View>
+                      <View style={[styles.checkbox, isSelected && { backgroundColor: color, borderColor: color }]}>
+                        {isSelected && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={[styles.modalFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+              <TouchableOpacity style={styles.modalSkipBtn} onPress={handleSkipEnrollment}>
+                <Text style={styles.modalSkipText}>Skip for now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalEnrollBtn, enrolling && { opacity: 0.7 }]}
+                onPress={handleEnrollAndFinish}
+                disabled={enrolling}
+              >
+                {enrolling ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
+                    <Text style={styles.modalEnrollText}>
+                      Enroll {selectedCourseIds.length > 0 && `(${selectedCourseIds.length})`}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -685,5 +632,64 @@ const styles = StyleSheet.create({
   courseOptionSubtext: {
     fontSize: FontSize.xs,
     color: Colors.subtext,
+  },
+  modalSub: {
+    fontSize: FontSize.xs,
+    color: Colors.subtext,
+    marginTop: 2,
+  },
+  noCoursesText: {
+    padding: Spacing.lg,
+    textAlign: "center",
+    color: Colors.subtext,
+    fontSize: FontSize.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalFooter: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    gap: Spacing.md,
+  },
+  modalSkipBtn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSkipText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.subtext,
+  },
+  modalEnrollBtn: {
+    flex: 2,
+    flexDirection: "row",
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    ...Shadows.colored,
+  },
+  modalEnrollText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+    color: Colors.white,
   },
 });

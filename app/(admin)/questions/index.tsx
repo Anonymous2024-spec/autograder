@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useState, useCallback } from "react";
 import {
   Alert,
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -19,118 +20,128 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
-// ── Static data — replace with API calls when backend is ready ──
-const COURSES = [
-  {
-    id: 1,
-    name: "Bachelor of Information Technology",
-    code: "BICT",
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Bachelor of Computer Science",
-    code: "BCS",
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Bachelor of Software Engineering",
-    code: "BSE",
-    color: Colors.cardGreen,
-  },
-];
+// Question interface
+interface CourseWithUnits {
+  id: number;
+  title: string;
+  code: string;
+  description?: string;
+  units?: CourseUnit[];
+}
 
-const COURSE_UNITS = [
-  {
-    id: 1,
-    name: "Introduction to Programming",
-    code: "PROG101",
-    color: Colors.cardBlue,
-    courseId: 1,
-  },
-  {
-    id: 2,
-    name: "Web Development Basics",
-    code: "WEB101",
-    color: Colors.cardTeal,
-    courseId: 1,
-  },
-  {
-    id: 3,
-    name: "Database Management",
-    code: "DB101",
-    color: Colors.cardGreen,
-    courseId: 1,
-  },
-  {
-    id: 4,
-    name: "Networking Fundamentals",
-    code: "NET101",
-    color: Colors.cardPurple,
-    courseId: 2,
-  },
-  {
-    id: 5,
-    name: "Cybersecurity Basics",
-    code: "SEC101",
-    color: Colors.cardBlue,
-    courseId: 2,
-  },
-  {
-    id: 6,
-    name: "Software Engineering Principles",
-    code: "SWE101",
-    color: Colors.cardGreen,
-    courseId: 3,
-  },
-];
+interface CourseUnit {
+  id: number;
+  title: string;
+  description?: string;
+  order?: number;
+  questions?: Question[];
+}
 
-// NEW — flat array filtered by unit_id
-const ALL_QUESTIONS = [
-  { id: 1, question: "What is the full meaning of CPU?", unit_id: 1 },
-  { id: 2, question: "Which data structure uses FIFO order?", unit_id: 1 },
-  { id: 3, question: "What does RAM stand for?", unit_id: 1 },
-  { id: 4, question: "What does CSS stand for?", unit_id: 2 },
-  { id: 5, question: "Which language runs in a web browser?", unit_id: 2 },
-  { id: 6, question: "What is an algorithm?", unit_id: 3 },
-];
+interface Question {
+  id: number;
+  question_text?: string;
+  unit_id: number;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  correct_answer?: string;
+}
+
+const COURSE_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function AdminQuestionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
-  // ── Two-level selection state ──
-  const [selectedCourse, setSelectedCourse] = useState<
-    (typeof COURSES)[0] | null
-  >(null);
-  const [selectedUnit, setSelectedUnit] = useState<
-    (typeof COURSE_UNITS)[0] | null
-  >(null);
+  // State
+  const [courses, setCourses] = useState<CourseWithUnits[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<CourseWithUnits | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<CourseUnit | null>(null);
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch courses when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        fetchCourses();
+      }
+    }, [token])
+  );
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const courseList = await adminAPI.getAllCourses(token);
+      const courseArray = Array.isArray(courseList) ? courseList : [];
+      
+      // Fetch detailed data with units for each course
+      const coursesWithUnits: CourseWithUnits[] = [];
+      for (const course of courseArray) {
+        try {
+          const courseData = await adminAPI.getCourse(course.id, token);
+          coursesWithUnits.push(courseData);
+        } catch (error) {
+          console.error(`Error fetching course ${course.id}:`, error);
+          coursesWithUnits.push(course);
+        }
+      }
+      
+      setCourses(coursesWithUnits);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      Alert.alert("Error", "Failed to load courses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Units filtered by selected course
-  const courseUnits = selectedCourse
-    ? COURSE_UNITS.filter((u) => u.courseId === selectedCourse.id)
-    : [];
+  const courseUnits = selectedCourse?.units || [];
 
   // Questions filtered by selected unit
-  const questions = selectedUnit
-    ? ALL_QUESTIONS.filter((q) => q.unit_id === selectedUnit.id)
+  const unitQuestions = selectedUnit
+    ? selectedUnit.questions || []
     : [];
 
   // Selecting a course resets unit selection
-  const handleSelectCourse = (course: (typeof COURSES)[0]) => {
+  const handleSelectCourse = (course: CourseWithUnits) => {
     setSelectedCourse(course);
     setSelectedUnit(null);
     setCoursePickerOpen(false);
   };
 
-  const handleSelectUnit = (unit: (typeof COURSE_UNITS)[0]) => {
+  const handleSelectUnit = async (unit: CourseUnit) => {
     setSelectedUnit(unit);
     setUnitPickerOpen(false);
+    
+    // Fetch questions for this unit
+    if (token) {
+      try {
+        console.log(`Fetching questions for unit ${unit.id}...`);
+        const questionsList = await adminAPI.getUnitQuestions(unit.id, token);
+        const questionsArray = Array.isArray(questionsList) ? questionsList : [];
+        console.log(`Fetched ${questionsArray.length} questions`);
+        // Store questions in the selected unit
+        setSelectedUnit({ ...unit, questions: questionsArray });
+      } catch (error: any) {
+        console.error("Error fetching questions:", error);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        Alert.alert(
+          "Error", 
+          `Failed to load questions: ${error.message || "Unknown error"}. Please ensure the backend is running.`,
+          [{ text: "OK" }]
+        );
+        setSelectedUnit({ ...unit, questions: [] });
+      }
+    }
   };
 
   const handleGenerateSheet = () => {
@@ -138,7 +149,7 @@ export default function AdminQuestionsScreen() {
       Alert.alert("No Unit", "Please select a course unit first.");
       return;
     }
-    if (questions.length === 0) {
+    if (unitQuestions.length === 0) {
       Alert.alert("No Questions", "Add questions to this unit first.");
       return;
     }
@@ -146,20 +157,30 @@ export default function AdminQuestionsScreen() {
       pathname: "/(admin)/questions/sheet",
       params: {
         unitId: selectedUnit.id,
-        unitName: selectedUnit.name,
-        unitCode: selectedUnit.code,
+        unitName: selectedUnit.title,
+        unitCode: selectedUnit.description,
       },
     });
   };
 
-  const handleOptions = (question: { id: number; question: string }) => {
+  const handleOptions = (question: Question) => {
     Alert.alert("Question Options", "What would you like to do?", [
       {
         text: "Edit",
         onPress: () =>
           router.push({
             pathname: "/(admin)/questions/edit",
-            params: { id: question.id, unitId: selectedUnit?.id },
+            params: { 
+              id: question.id.toString(),
+              question_text: question.question_text || "",
+              option_a: question.option_a || "",
+              option_b: question.option_b || "",
+              option_c: question.option_c || "",
+              option_d: question.option_d || "",
+              correct_answer: question.correct_answer || "",
+              unitName: selectedUnit?.title || "",
+              unitCode: selectedUnit?.description || "",
+            },
           }),
       },
       {
@@ -171,16 +192,31 @@ export default function AdminQuestionsScreen() {
     ]);
   };
 
-  const confirmDelete = (id: number) => {
+  const confirmDelete = async (id: number) => {
     Alert.alert("Delete Question", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => console.log("Delete:", id),
+        onPress: async () => {
+          if (!token) return;
+          try {
+            await adminAPI.deleteQuestion(id, token);
+            // Refresh questions
+            if (selectedUnit) {
+              const questionsList = await adminAPI.getUnitQuestions(selectedUnit.id, token);
+              const questionsArray = Array.isArray(questionsList) ? questionsList : [];
+              setSelectedUnit({ ...selectedUnit, questions: questionsArray });
+            }
+          } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to delete question");
+          }
+        },
       },
     ]);
   };
+
+  const getColor = (index: number) => COURSE_COLORS[index % COURSE_COLORS.length];
 
   return (
     <View style={styles.root}>
@@ -212,7 +248,11 @@ export default function AdminQuestionsScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/(admin)/questions/create",
-                  params: { unitId: selectedUnit.id },
+                  params: { 
+                    unitId: selectedUnit.id.toString(),
+                    unitName: selectedUnit.title,
+                    unitCode: selectedUnit.description || "",
+                  },
                 })
               }
             >
@@ -222,131 +262,145 @@ export default function AdminQuestionsScreen() {
         </View>
 
         {/* ── Course picker trigger ── */}
-        <TouchableOpacity
-          style={styles.pickerTrigger}
-          onPress={() => {
-            setCoursePickerOpen(!coursePickerOpen);
-            setUnitPickerOpen(false);
-          }}
-          activeOpacity={0.85}
-        >
-          {selectedCourse ? (
-            <View
-              style={[
-                styles.pickerIcon,
-                { backgroundColor: selectedCourse.color + "25" },
-              ]}
+        {loading ? (
+          <ActivityIndicator color={Colors.white} style={styles.pickerTrigger} />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.pickerTrigger}
+              onPress={() => {
+                setCoursePickerOpen(!coursePickerOpen);
+                setUnitPickerOpen(false);
+              }}
+              activeOpacity={0.85}
             >
-              <Ionicons name="book" size={16} color={Colors.white} />
-            </View>
-          ) : (
-            <Ionicons name="book-outline" size={18} color={Colors.subtext} />
-          )}
-          <Text
-            style={[
-              styles.pickerTriggerText,
-              !selectedCourse && styles.pickerPlaceholder,
-            ]}
-          >
-            {selectedCourse ? selectedCourse.name : "1. Select a course..."}
-          </Text>
-          <Ionicons
-            name={coursePickerOpen ? "chevron-up" : "chevron-down"}
-            size={18}
-            color={selectedCourse ? Colors.white : Colors.subtext}
-          />
-        </TouchableOpacity>
-
-        {/* ── Unit picker trigger — only visible after course is selected ── */}
-        {selectedCourse && (
-          <TouchableOpacity
-            style={[styles.pickerTrigger, styles.pickerTriggerSecond]}
-            onPress={() => {
-              setUnitPickerOpen(!unitPickerOpen);
-              setCoursePickerOpen(false);
-            }}
-            activeOpacity={0.85}
-          >
-            {selectedUnit ? (
-              <View
+              {selectedCourse ? (
+                <View
+                  style={[
+                    styles.pickerIcon,
+                    { backgroundColor: getColor(0) + "25" },
+                  ]}
+                >
+                  <Ionicons name="book" size={16} color={Colors.white} />
+                </View>
+              ) : (
+                <Ionicons name="book-outline" size={18} color={Colors.subtext} />
+              )}
+              <Text
                 style={[
-                  styles.pickerIcon,
-                  { backgroundColor: selectedUnit.color + "25" },
+                  styles.pickerTriggerText,
+                  !selectedCourse && styles.pickerPlaceholder,
                 ]}
               >
-                <Ionicons name="layers" size={16} color={Colors.white} />
-              </View>
-            ) : (
+                {selectedCourse ? selectedCourse.title : "1. Select a course..."}
+              </Text>
               <Ionicons
-                name="layers-outline"
+                name={coursePickerOpen ? "chevron-up" : "chevron-down"}
                 size={18}
-                color={Colors.subtext}
+                color={selectedCourse ? Colors.white : Colors.subtext}
               />
+            </TouchableOpacity>
+
+            {/* ── Unit picker trigger — only visible after course is selected ── */}
+            {selectedCourse && (
+              <TouchableOpacity
+                style={[styles.pickerTrigger, styles.pickerTriggerSecond]}
+                onPress={() => {
+                  setUnitPickerOpen(!unitPickerOpen);
+                  setCoursePickerOpen(false);
+                }}
+                activeOpacity={0.85}
+              >
+                {selectedUnit ? (
+                  <View
+                    style={[
+                      styles.pickerIcon,
+                      { backgroundColor: getColor(1) + "25" },
+                    ]}
+                  >
+                    <Ionicons name="layers" size={16} color={Colors.white} />
+                  </View>
+                ) : (
+                  <Ionicons
+                    name="layers-outline"
+                    size={18}
+                    color={Colors.subtext}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.pickerTriggerText,
+                    !selectedUnit && styles.pickerPlaceholder,
+                  ]}
+                >
+                  {selectedUnit ? selectedUnit.title : "2. Select a course unit..."}
+                </Text>
+                <Ionicons
+                  name={unitPickerOpen ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={selectedUnit ? Colors.white : Colors.subtext}
+                />
+              </TouchableOpacity>
             )}
-            <Text
-              style={[
-                styles.pickerTriggerText,
-                !selectedUnit && styles.pickerPlaceholder,
-              ]}
-            >
-              {selectedUnit ? selectedUnit.name : "2. Select a course unit..."}
-            </Text>
-            <Ionicons
-              name={unitPickerOpen ? "chevron-up" : "chevron-down"}
-              size={18}
-              color={selectedUnit ? Colors.white : Colors.subtext}
-            />
-          </TouchableOpacity>
+          </>
         )}
       </LinearGradient>
 
       {/* ── Course dropdown ── */}
       {coursePickerOpen && (
         <View style={styles.dropdown}>
-          {COURSES.map((course) => (
-            <TouchableOpacity
-              key={course.id}
-              style={[
-                styles.dropdownItem,
-                selectedCourse?.id === course.id && styles.dropdownItemActive,
-              ]}
-              onPress={() => handleSelectCourse(course)}
-            >
-              <View
-                style={[styles.dropdownBar, { backgroundColor: course.color }]}
-              />
-              <View
+          {courses.length === 0 ? (
+            <View style={styles.dropdownEmpty}>
+              <Text style={styles.dropdownEmptyText}>
+                No courses available
+              </Text>
+            </View>
+          ) : (
+            courses.map((course, index) => (
+              <TouchableOpacity
+                key={course.id}
                 style={[
-                  styles.dropdownIcon,
-                  { backgroundColor: course.color + "18" },
+                  styles.dropdownItem,
+                  selectedCourse?.id === course.id && styles.dropdownItemActive,
                 ]}
+                onPress={() => handleSelectCourse(course)}
               >
-                <Ionicons name="book" size={16} color={course.color} />
-              </View>
-              <View style={styles.dropdownInfo}>
-                <Text style={styles.dropdownName} numberOfLines={1}>
-                  {course.name}
-                </Text>
+                <View
+                  style={[styles.dropdownBar, { backgroundColor: getColor(index) }]}
+                />
                 <View
                   style={[
-                    styles.codeBadge,
-                    { backgroundColor: course.color + "18" },
+                    styles.dropdownIcon,
+                    { backgroundColor: getColor(index) + "18" },
                   ]}
                 >
-                  <Text style={[styles.codeBadgeText, { color: course.color }]}>
-                    {course.code}
-                  </Text>
+                  <Ionicons name="book" size={16} color={getColor(index)} />
                 </View>
-              </View>
-              {selectedCourse?.id === course.id && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={Colors.primary}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
+                <View style={styles.dropdownInfo}>
+                  <Text style={styles.dropdownName} numberOfLines={1}>
+                    {course.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.codeBadge,
+                      { backgroundColor: getColor(index) + "18" },
+                    ]}
+                  >
+                    <Text style={[styles.codeBadgeText, { color: getColor(index) }]}>
+                      {course.code}
+                    </Text>
+                  </View>
+                </View>
+                {selectedCourse?.id === course.id && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={Colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       )}
 
@@ -360,7 +414,7 @@ export default function AdminQuestionsScreen() {
               </Text>
             </View>
           ) : (
-            courseUnits.map((unit) => (
+            courseUnits.map((unit, index) => (
               <TouchableOpacity
                 key={unit.id}
                 style={[
@@ -370,28 +424,28 @@ export default function AdminQuestionsScreen() {
                 onPress={() => handleSelectUnit(unit)}
               >
                 <View
-                  style={[styles.dropdownBar, { backgroundColor: unit.color }]}
+                  style={[styles.dropdownBar, { backgroundColor: getColor(index) }]}
                 />
                 <View
                   style={[
                     styles.dropdownIcon,
-                    { backgroundColor: unit.color + "18" },
+                    { backgroundColor: getColor(index) + "18" },
                   ]}
                 >
-                  <Ionicons name="layers" size={16} color={unit.color} />
+                  <Ionicons name="layers" size={16} color={getColor(index)} />
                 </View>
                 <View style={styles.dropdownInfo}>
                   <Text style={styles.dropdownName} numberOfLines={1}>
-                    {unit.name}
+                    {unit.title}
                   </Text>
                   <View
                     style={[
                       styles.codeBadge,
-                      { backgroundColor: unit.color + "18" },
+                      { backgroundColor: getColor(index) + "18" },
                     ]}
                   >
-                    <Text style={[styles.codeBadgeText, { color: unit.color }]}>
-                      {unit.code}
+                    <Text style={[styles.codeBadgeText, { color: getColor(index) }]}>
+                      {unit.description || `${unit.questions?.length || 0} questions`}
                     </Text>
                   </View>
                 </View>
@@ -409,7 +463,7 @@ export default function AdminQuestionsScreen() {
       )}
 
       {/* ── Generate sheet banner — only when unit has questions ── */}
-      {selectedUnit && questions.length > 0 && (
+      {selectedUnit && unitQuestions.length > 0 && (
         <TouchableOpacity
           style={styles.generateBanner}
           onPress={handleGenerateSheet}
@@ -426,7 +480,7 @@ export default function AdminQuestionsScreen() {
             <View style={styles.generateInfo}>
               <Text style={styles.generateTitle}>Generate Answer Sheet</Text>
               <Text style={styles.generateSub}>
-                {questions.length} question(s) for {selectedUnit.code}
+                {unitQuestions.length} question(s) for {selectedUnit.title}
               </Text>
             </View>
             <View style={styles.generateArrow}>
@@ -439,34 +493,27 @@ export default function AdminQuestionsScreen() {
       {/* ── Questions list or empty states ── */}
       {selectedUnit ? (
         <FlatList
-          data={questions}
+          data={unitQuestions}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            questions.length > 0 ? (
+            unitQuestions.length > 0 ? (
               <View style={styles.listHeader}>
                 <Text style={styles.listHeaderText}>
-                  {questions.length} Question{questions.length !== 1 ? "s" : ""}
+                  {unitQuestions.length} question{unitQuestions.length !== 1 ? "s" : ""}
                 </Text>
-                <View
-                  style={[
-                    styles.unitTag,
-                    { backgroundColor: selectedUnit.color + "18" },
-                  ]}
-                >
-                  <Text
-                    style={[styles.unitTagText, { color: selectedUnit.color }]}
-                  >
-                    {selectedUnit.code}
-                  </Text>
-                </View>
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconBox}>
+              <View
+                style={[
+                  styles.emptyIconBox,
+                  { backgroundColor: Colors.primaryLight },
+                ]}
+              >
                 <Ionicons
                   name="help-circle-outline"
                   size={40}
@@ -475,138 +522,122 @@ export default function AdminQuestionsScreen() {
               </View>
               <Text style={styles.emptyTitle}>No Questions Yet</Text>
               <Text style={styles.emptyText}>
-                Tap + to add the first question for {selectedUnit.code}
+                Create questions for this unit
               </Text>
             </View>
           }
-          renderItem={({ item, index }) => (
-            <View style={styles.questionCard}>
-              <View style={styles.questionNumBox}>
-                <Text style={styles.questionNumText}>{index + 1}</Text>
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.questionCard}
+              onPress={() => handleOptions(item)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.questionCardContent}>
+                <View style={styles.questionNumber}>
+                  <Text style={styles.questionNumberText}>Q</Text>
+                </View>
+                <View style={styles.questionInfo}>
+                  <Text style={styles.questionText} numberOfLines={2}>
+                    {item.question_text || "Untitled Question"}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.questionText} numberOfLines={2}>
-                {item.question}
-              </Text>
-              <TouchableOpacity
-                style={styles.menuBtn}
-                onPress={() => handleOptions(item)}
-              >
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={18}
-                  color={Colors.subtext}
-                />
-              </TouchableOpacity>
-            </View>
+              <Ionicons
+                name="ellipsis-vertical"
+                size={18}
+                color={Colors.subtext}
+              />
+            </TouchableOpacity>
           )}
         />
-      ) : selectedCourse ? (
-        // Course selected but no unit yet
-        <View style={styles.noCourseContainer}>
-          <View style={styles.noCourseIconBox}>
-            <Ionicons name="layers-outline" size={40} color={Colors.primary} />
-          </View>
-          <Text style={styles.noCourseTitle}>No Unit Selected</Text>
-          <Text style={styles.noCourseText}>
-            Tap the unit picker above to view and manage questions
-          </Text>
-        </View>
       ) : (
-        // Nothing selected yet
-        <View style={styles.noCourseContainer}>
-          <View style={styles.noCourseIconBox}>
-            <Ionicons name="book-outline" size={40} color={Colors.primary} />
+        <View style={styles.emptyContainer}>
+          <View
+            style={[
+              styles.emptyIconBox,
+              { backgroundColor: Colors.accentLight },
+            ]}
+          >
+            <Ionicons
+              name="book-outline"
+              size={40}
+              color={Colors.accent}
+            />
           </View>
-          <Text style={styles.noCourseTitle}>No Course Selected</Text>
-          <Text style={styles.noCourseText}>
-            Start by selecting a course, then choose a unit
+          <Text style={styles.emptyTitle}>Select a Course & Unit</Text>
+          <Text style={styles.emptyText}>
+            Choose a course and unit to view questions
           </Text>
         </View>
-      )}
-
-      {/* ── FAB — only when unit is selected ── */}
-      {selectedUnit && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() =>
-            router.push({
-              pathname: "/(admin)/questions/create",
-              params: { unitId: selectedUnit.id },
-            })
-          }
-        >
-          <LinearGradient
-            colors={[Colors.primary, Colors.primaryDark]}
-            style={styles.fabGradient}
-          >
-            <Ionicons name="add" size={26} color={Colors.white} />
-          </LinearGradient>
-        </TouchableOpacity>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.background },
+  root: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
 
   // ── Header ──
   header: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.lg,
     overflow: "hidden",
-    zIndex: 10,
   },
   headerShapeL: {
     position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
     backgroundColor: "rgba(255,255,255,0.05)",
-    top: -70,
-    right: -50,
+    top: -80,
+    right: -60,
   },
   headerShapeS: {
     position: "absolute",
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    bottom: -20,
-    left: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    bottom: 10,
+    left: -30,
   },
+
+  // Header content
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
     marginBottom: Spacing.md,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+    marginRight: Spacing.sm,
   },
-  headerText: { flex: 1 },
+  headerText: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: FontSize.xl,
+    fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
     color: Colors.white,
   },
   headerSub: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     color: "rgba(255,255,255,0.7)",
     marginTop: 2,
   },
   addBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -615,94 +646,111 @@ const styles = StyleSheet.create({
   pickerTrigger: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.white,
+    backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: Radius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.sm,
     gap: Spacing.sm,
-    ...Shadows.sm,
   },
   pickerTriggerSecond: {
-    marginTop: Spacing.sm,
+    marginBottom: 0,
   },
   pickerIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.sm,
+    width: 32,
+    height: 32,
+    borderRadius: Radius.md,
     justifyContent: "center",
     alignItems: "center",
   },
   pickerTriggerText: {
     flex: 1,
     fontSize: FontSize.sm,
-    color: Colors.text,
     fontWeight: FontWeight.medium,
+    color: Colors.white,
   },
   pickerPlaceholder: {
-    color: Colors.placeholder,
+    color: "rgba(255,255,255,0.6)",
     fontWeight: FontWeight.regular,
   },
 
-  // Dropdowns
+  // Dropdown
   dropdown: {
     backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
     marginHorizontal: Spacing.lg,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Shadows.md,
-    zIndex: 20,
+    marginBottom: Spacing.md,
     overflow: "hidden",
+    ...Shadows.md,
   },
   dropdownItem: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    paddingRight: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.md,
-    overflow: "hidden",
   },
-  dropdownItemActive: { backgroundColor: Colors.primaryLight },
-  dropdownBar: { width: 4, height: "100%" },
+  dropdownItemActive: {
+    backgroundColor: Colors.primaryLight,
+  },
+  dropdownBar: {
+    width: 4,
+    height: 40,
+    borderRadius: 2,
+    marginRight: Spacing.md,
+  },
   dropdownIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.sm,
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     justifyContent: "center",
     alignItems: "center",
+    marginRight: Spacing.md,
   },
-  dropdownInfo: { flex: 1, gap: 3 },
+  dropdownInfo: {
+    flex: 1,
+  },
   dropdownName: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
     color: Colors.text,
+    marginBottom: 4,
   },
   codeBadge: {
     alignSelf: "flex-start",
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
+    borderRadius: Radius.sm,
   },
-  codeBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  dropdownEmpty: { padding: Spacing.lg, alignItems: "center" },
-  dropdownEmptyText: { fontSize: FontSize.sm, color: Colors.subtext },
+  codeBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+  },
+  dropdownEmpty: {
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownEmptyText: {
+    fontSize: FontSize.sm,
+    color: Colors.subtext,
+  },
 
-  // Generate banner
+  // Generate sheet banner
   generateBanner: {
     marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    borderRadius: Radius.xl,
+    marginBottom: Spacing.md,
+    borderRadius: Radius.lg,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    ...Shadows.sm,
   },
   generateGradient: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
-    gap: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
   },
   generateIconBox: {
     width: 44,
@@ -711,34 +759,37 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     justifyContent: "center",
     alignItems: "center",
-    ...Shadows.sm,
+    marginRight: Spacing.md,
   },
-  generateInfo: { flex: 1 },
+  generateInfo: {
+    flex: 1,
+  },
   generateTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
     color: Colors.primary,
   },
   generateSub: {
     fontSize: FontSize.xs,
-    color: Colors.primary + "99",
+    color: Colors.subtext,
     marginTop: 2,
   },
   generateArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.white,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(25,90,220,0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  // List
-  list: { padding: Spacing.lg, paddingBottom: Spacing.xl * 3 },
+  // Questions list
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
   listHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: Spacing.md,
   },
   listHeaderText: {
@@ -746,84 +797,60 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     color: Colors.subtext,
   },
-  unitTag: {
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-  },
-  unitTagText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-
-  // Question cards
   questionCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     marginBottom: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: Spacing.md,
     ...Shadows.sm,
   },
-  questionNumBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  questionCardContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  questionNumber: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
+    marginRight: Spacing.md,
   },
-  questionNumText: {
+  questionNumberText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.primary,
   },
-  questionText: {
+  questionInfo: {
     flex: 1,
-    fontSize: FontSize.md,
-    color: Colors.text,
-    lineHeight: 22,
   },
-  menuBtn: { padding: Spacing.xs },
+  questionText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.text,
+  },
 
   // Empty states
-  noCourseContainer: {
+  emptyContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.xl,
-  },
-  noCourseIconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
-  noCourseTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.text,
-    marginBottom: Spacing.xs,
-  },
-  noCourseText: {
-    fontSize: FontSize.sm,
-    color: Colors.subtext,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  emptyContainer: { alignItems: "center", paddingTop: Spacing.xl * 2 },
   emptyIconBox: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   emptyTitle: {
     fontSize: FontSize.lg,
@@ -836,17 +863,4 @@ const styles = StyleSheet.create({
     color: Colors.subtext,
     textAlign: "center",
   },
-
-  // FAB
-  fab: {
-    position: "absolute",
-    bottom: Spacing.xl,
-    right: Spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: "hidden",
-    ...Shadows.colored,
-  },
-  fabGradient: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

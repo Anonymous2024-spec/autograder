@@ -19,7 +19,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.autograder.mcq"
     },
     "web": {
       "output": "static",
@@ -44,11 +49,23 @@
         {
           "cameraPermission": "Allow AutoGrader to access your camera to scan answer sheets."
         }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudPermission": "Allow AutoGrader to access iCloud to select PDF files."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2bfdbe38-98b0-49a2-870e-7c1d66c98c71"
+      }
     }
   }
 }

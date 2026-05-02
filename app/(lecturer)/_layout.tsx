@@ -7,22 +7,22 @@ export default function LecturerLayout() {
       <Stack.Screen name="profile" options={{ headerShown: false }} />
 
       {/* courses */}
-      <Stack.Screen name="courses" options={{ headerShown: false }} />
+      <Stack.Screen name="courses/index" options={{ headerShown: false }} />
       <Stack.Screen name="courses/units" options={{ headerShown: false }} />
       <Stack.Screen
         name="courses/units/create"
         options={{ headerShown: false }}
       />
 
-      {/* questions/index.tsx → name is "questions" not "questions/index" */}
-      <Stack.Screen name="questions" options={{ headerShown: false }} />
+      {/* questions */}
+      <Stack.Screen name="questions/index" options={{ headerShown: false }} />
       <Stack.Screen name="questions/create" options={{ headerShown: false }} />
-
       <Stack.Screen name="questions/edit" options={{ headerShown: false }} />
+      <Stack.Screen name="questions/sheet" options={{ headerShown: false }} />
 
-      {/* grading/index.tsx → name is "grading" not "grading/index" */}
+      {/* grading */}
       <Stack.Screen
-        name="grading"
+        name="grading/index"
         options={{ headerShown: false, title: "Grade Student" }}
       />
       <Stack.Screen
@@ -33,10 +33,10 @@ export default function LecturerLayout() {
         name="grading/result"
         options={{ headerShown: false, title: "Grade Report" }}
       />
-      <Stack.Screen
-        name="questions/sheet"
-        options={{ headerShown: false, title: "Answer Sheet" }}
-      />
+
+      {/* students */}
+      <Stack.Screen name="students/index" options={{ headerShown: false }} />
+      <Stack.Screen name="students/detail" options={{ headerShown: false }} />
     </Stack>
   );
 }

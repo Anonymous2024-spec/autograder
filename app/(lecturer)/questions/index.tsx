@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
@@ -19,77 +20,60 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { lecturerAPI } from "../../../services/api";
 
-const COURSE_UNITS = [
-  {
-    id: 1,
-    name: "Introduction to Programming",
-    code: "PROG101",
-    color: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Web Development Basics",
-    code: "WEB101",
-    color: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Database Management",
-    code: "DB101",
-    color: Colors.cardGreen,
-  },
-  {
-    id: 4,
-    name: "Networking Fundamentals",
-    code: "NET101",
-    color: Colors.cardPurple,
-  },
-  {
-    id: 5,
-    name: "Cybersecurity Basics",
-    code: "SEC101",
-    color: Colors.cardBlue,
-  },
-];
-
-const ALL_QUESTIONS = [
-  { id: 1, question: "What is the full meaning of CPU?", unit_id: 1 },
-  { id: 2, question: "Which data structure uses FIFO order?", unit_id: 1 },
-  { id: 3, question: "What does RAM stand for?", unit_id: 1 },
-  { id: 4, question: "What does CSS stand for?", unit_id: 2 },
-  { id: 5, question: "Which language runs in a web browser?", unit_id: 2 },
-  { id: 6, question: "What is an algorithm?", unit_id: 3 },
-  { id: 7, question: "What is a database schema?", unit_id: 3 },
-  { id: 8, question: "Define TCP/IP", unit_id: 4 },
-  { id: 9, question: "What is encryption?", unit_id: 5 },
-];
+const UNIT_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function QuestionsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { unitId, unitName, unitCode } = useLocalSearchParams();
+  const { token } = useAuth();
+  const { unitId: paramUnitId } = useLocalSearchParams();
 
-  const [selectedUnit, setSelectedUnit] = useState<
-    (typeof COURSE_UNITS)[0] | null
-  >(null);
+  const [units, setUnits] = useState<any[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<any | null>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(true);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
-  // Auto-select unit if passed via route params
+  // Load all units from all courses
   useEffect(() => {
-    if (unitId) {
-      const unit = COURSE_UNITS.find(
-        (u) => u.id === parseInt(unitId as string),
-      );
-      if (unit) {
-        setSelectedUnit(unit);
-      }
-    }
-  }, [unitId]);
+    if (!token) return;
+    lecturerAPI.getCourses(token)
+      .then((courses) => {
+        const allUnits: any[] = [];
+        (courses ?? []).forEach((course: any) => {
+          (course.units ?? []).forEach((unit: any) => {
+            allUnits.push({ ...unit, courseCode: course.code, courseTitle: course.title });
+          });
+        });
+        setUnits(allUnits);
+        if (paramUnitId) {
+          const found = allUnits.find((u) => u.id === Number(paramUnitId));
+          if (found) selectUnit(found);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoadingUnits(false));
+  }, [token]);
 
-  const questions = selectedUnit
-    ? ALL_QUESTIONS.filter((q) => q.unit_id === selectedUnit.id)
-    : [];
+  const selectUnit = useCallback(async (unit: any) => {
+    setSelectedUnit(unit);
+    setPickerOpen(false);
+    if (!token) return;
+    setLoadingQuestions(true);
+    try {
+      const data = await lecturerAPI.getUnitQuestions(unit.id, token);
+      setQuestions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load questions:", err);
+      setQuestions([]);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }, [token]);
 
   const handleGenerateSheet = () => {
     if (!selectedUnit) {
@@ -104,13 +88,13 @@ export default function QuestionsScreen() {
       pathname: "/(lecturer)/questions/sheet",
       params: {
         unitId: selectedUnit.id,
-        unitName: selectedUnit.name,
-        unitCode: selectedUnit.code,
+        unitName: selectedUnit.title,
+        unitCode: selectedUnit.courseCode,
       },
     });
   };
 
-  const handleOptions = (question: { id: number; question: string }) => {
+  const handleOptions = (question: any) => {
     Alert.alert("Question Options", "What would you like to do?", [
       {
         text: "Edit",
@@ -120,23 +104,7 @@ export default function QuestionsScreen() {
             params: { id: question.id },
           }),
       },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => confirmDelete(question.id),
-      },
       { text: "Cancel", style: "cancel" },
-    ]);
-  };
-
-  const confirmDelete = (id: number) => {
-    Alert.alert("Delete Question", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => console.log("Delete:", id),
-      },
     ]);
   };
 
@@ -164,7 +132,14 @@ export default function QuestionsScreen() {
             <TouchableOpacity
               style={styles.addBtn}
               onPress={() =>
-                router.push({ pathname: "/(lecturer)/questions/create" })
+                router.push({
+                  pathname: "/(lecturer)/questions/create",
+                  params: {
+                    unitId: selectedUnit.id.toString(),
+                    unitName: selectedUnit.title,
+                    unitCode: selectedUnit.courseCode,
+                  },
+                })
               }
             >
               <Ionicons name="add" size={22} color={Colors.white} />
@@ -197,7 +172,7 @@ export default function QuestionsScreen() {
             ]}
           >
             {selectedUnit
-              ? selectedUnit.name
+              ? `${selectedUnit.title} (${selectedUnit.courseCode})`
               : "Select a unit to view questions..."}
           </Text>
           <Ionicons
@@ -211,53 +186,45 @@ export default function QuestionsScreen() {
       {/* ── Unit dropdown ── */}
       {pickerOpen && (
         <View style={styles.dropdown}>
-          {COURSE_UNITS.map((unit) => (
-            <TouchableOpacity
-              key={unit.id}
-              style={[
-                styles.dropdownItem,
-                selectedUnit?.id === unit.id && styles.dropdownItemActive,
-              ]}
-              onPress={() => {
-                setSelectedUnit(unit);
-                setPickerOpen(false);
-              }}
-            >
-              <View
-                style={[styles.dropdownBar, { backgroundColor: unit.color }]}
-              />
-              <View
-                style={[
-                  styles.dropdownIcon,
-                  { backgroundColor: unit.color + "18" },
-                ]}
-              >
-                <Ionicons name="layers" size={16} color={unit.color} />
-              </View>
-              <View style={styles.dropdownInfo}>
-                <Text style={styles.dropdownName} numberOfLines={1}>
-                  {unit.name}
-                </Text>
-                <View
+          {loadingUnits ? (
+            <ActivityIndicator color={Colors.primary} style={{ padding: Spacing.md }} />
+          ) : units.length === 0 ? (
+            <Text style={{ padding: Spacing.md, color: Colors.subtext, textAlign: "center" }}>
+              No units found. Create a course with units first.
+            </Text>
+          ) : (
+            units.map((unit, idx) => {
+              const color = UNIT_COLORS[idx % UNIT_COLORS.length];
+              return (
+                <TouchableOpacity
+                  key={unit.id}
                   style={[
-                    styles.codeBadge,
-                    { backgroundColor: unit.color + "18" },
+                    styles.dropdownItem,
+                    selectedUnit?.id === unit.id && styles.dropdownItemActive,
                   ]}
+                  onPress={() => selectUnit(unit)}
                 >
-                  <Text style={[styles.codeBadgeText, { color: unit.color }]}>
-                    {unit.code}
-                  </Text>
-                </View>
-              </View>
-              {selectedUnit?.id === unit.id && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={20}
-                  color={Colors.primary}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
+                  <View style={[styles.dropdownBar, { backgroundColor: color }]} />
+                  <View style={[styles.dropdownIcon, { backgroundColor: color + "18" }]}>
+                    <Ionicons name="layers" size={16} color={color} />
+                  </View>
+                  <View style={styles.dropdownInfo}>
+                    <Text style={styles.dropdownName} numberOfLines={1}>
+                      {unit.title}
+                    </Text>
+                    <View style={[styles.codeBadge, { backgroundColor: color + "18" }]}>
+                      <Text style={[styles.codeBadgeText, { color }]}>
+                        {unit.courseCode}
+                      </Text>
+                    </View>
+                  </View>
+                  {selectedUnit?.id === unit.id && (
+                    <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
       )}
 
@@ -279,7 +246,7 @@ export default function QuestionsScreen() {
             <View style={styles.generateInfo}>
               <Text style={styles.generateTitle}>Generate Answer Sheet</Text>
               <Text style={styles.generateSub}>
-                {questions.length} question(s) for {selectedUnit.code}
+                {questions.length} question(s) for {selectedUnit.courseCode}
               </Text>
             </View>
             <View style={styles.generateArrow}>
@@ -291,79 +258,60 @@ export default function QuestionsScreen() {
 
       {/* ── Questions list or empty states ── */}
       {selectedUnit ? (
-        <FlatList
-          data={questions}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            questions.length > 0 ? (
-              <View style={styles.listHeader}>
-                <Text style={styles.listHeaderText}>
-                  {questions.length} Question{questions.length !== 1 ? "s" : ""}
-                </Text>
-                <View
-                  style={[
-                    styles.courseTag,
-                    {
-                      backgroundColor:
-                        (COURSE_UNITS.find((u) => u.id === selectedUnit.id)
-                          ?.color ?? Colors.primary) + "18",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.courseTagText,
-                      {
-                        color:
-                          COURSE_UNITS.find((u) => u.id === selectedUnit.id)
-                            ?.color ?? Colors.primary,
-                      },
-                    ]}
-                  >
-                    {selectedUnit.code}
+        loadingQuestions ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+        ) : (
+          <FlatList
+            data={questions}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              questions.length > 0 ? (
+                <View style={styles.listHeader}>
+                  <Text style={styles.listHeaderText}>
+                    {questions.length} Question{questions.length !== 1 ? "s" : ""}
                   </Text>
+                  <View style={[styles.courseTag, { backgroundColor: Colors.primary + "18" }]}>
+                    <Text style={[styles.courseTagText, { color: Colors.primary }]}>
+                      {selectedUnit.courseCode}
+                    </Text>
+                  </View>
                 </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconBox}>
+                  <Ionicons name="help-circle-outline" size={40} color={Colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No Questions Yet</Text>
+                <Text style={styles.emptyText}>
+                  Tap + to add your first question for {selectedUnit.title}
+                </Text>
               </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconBox}>
-                <Ionicons
-                  name="help-circle-outline"
-                  size={40}
-                  color={Colors.primary}
-                />
+            }
+            renderItem={({ item, index }) => (
+              <View style={styles.questionCard}>
+                <View style={styles.questionNumBox}>
+                  <Text style={styles.questionNumText}>{index + 1}</Text>
+                </View>
+                <Text style={styles.questionText} numberOfLines={2}>
+                  {item.question_text || `Question ${item.id}`}
+                </Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.subtext }}>
+                  {item.total_marks} mk
+                </Text>
+                <TouchableOpacity
+                  style={styles.menuBtn}
+                  onPress={() => handleOptions(item)}
+                >
+                  <Ionicons name="ellipsis-vertical" size={18} color={Colors.subtext} />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.emptyTitle}>No Questions Yet</Text>
-              <Text style={styles.emptyText}>
-                Tap + to add your first question for {selectedUnit.code}
-              </Text>
-            </View>
-          }
-          renderItem={({ item, index }) => (
-            <View style={styles.questionCard}>
-              <View style={styles.questionNumBox}>
-                <Text style={styles.questionNumText}>{index + 1}</Text>
-              </View>
-              <Text style={styles.questionText} numberOfLines={2}>
-                {item.question}
-              </Text>
-              <TouchableOpacity
-                style={styles.menuBtn}
-                onPress={() => handleOptions(item)}
-              >
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={18}
-                  color={Colors.subtext}
-                />
-              </TouchableOpacity>
-            </View>
-          )}
-        />
+            )}
+          />
+        )
       ) : (
         <View style={styles.noCourseContainer}>
           <View style={styles.noCourseIconBox}>
@@ -609,6 +557,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   menuBtn: { padding: Spacing.xs },
+  questionRight: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
+  guideBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.successLight,
+    justifyContent: "center", alignItems: "center",
+  },
+  noGuideBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: Colors.warningLight,
+    justifyContent: "center", alignItems: "center",
+  },
 
   // Empty / no course states
   noCourseContainer: {

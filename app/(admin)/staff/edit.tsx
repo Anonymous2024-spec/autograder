@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,52 +22,35 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
-
-const ROLES = [
-  {
-    id: "lecturer",
-    label: "Lecturer",
-    icon: "school-outline",
-    color: Colors.primary,
-    bg: Colors.primaryLight,
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    icon: "shield-outline",
-    color: Colors.cardPurple,
-    bg: "#EDE9FE",
-  },
-];
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
 export default function EditStaff() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams();
+  const { token } = useAuth();
+  const params = useLocalSearchParams<{
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    department: string;
+    role: string;
+  }>();
 
-  // TODO: Replace with real API fetch by id
-  const [username, setUsername] = useState("Dr. Okello");
-  const [email, setEmail] = useState("okello@gulu.ac.ug");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("lecturer");
+  const [name, setName] = useState(params.name ?? "");
+  const [email, setEmail] = useState(params.email ?? "");
+  const [department, setDepartment] = useState(params.department ?? "");
   const [loading, setLoading] = useState(false);
 
-  const [errors, setErrors] = useState({ username: "", email: "" });
+  const [errors, setErrors] = useState({ name: "", email: "" });
 
   const validate = () => {
-    const e = { username: "", email: "" };
+    const e = { name: "", email: "" };
     let valid = true;
-    if (!username.trim()) {
-      e.username = "Username is required";
-      valid = false;
-    }
-    if (!email.trim()) {
-      e.email = "Email is required";
-      valid = false;
-    } else if (!email.includes("@")) {
-      e.email = "Enter a valid email";
-      valid = false;
-    }
+    if (!name.trim()) { e.name = "Full name is required"; valid = false; }
+    if (!email.trim()) { e.email = "Email is required"; valid = false; }
+    else if (!email.includes("@")) { e.email = "Enter a valid email"; valid = false; }
     setErrors(e);
     return valid;
   };
@@ -74,21 +58,33 @@ export default function EditStaff() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: PUT to API
-    setTimeout(() => {
+    try {
+      await adminAPI.updateUser(
+        Number(params.userId),
+        {
+          full_name: name.trim(),
+          email: email.trim(),
+          department: department.trim() || undefined,
+        },
+        token!
+      );
+      Alert.alert("Success", "Staff member updated successfully!", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to update staff member");
+    } finally {
       setLoading(false);
-      router.back();
-    }, 1000);
+    }
   };
 
-  const selectedRole = ROLES.find((r) => r.id === role)!;
+  const roleLabel = params.role === "admin" ? "Admin" : "Lecturer";
 
   return (
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      {/* ── Gradient header ── */}
       <LinearGradient
         colors={["#2D1B69", "#5B21B6", Colors.cardPurple]}
         start={{ x: 0, y: 0 }}
@@ -99,71 +95,49 @@ export default function EditStaff() {
         <View style={styles.headerShapeS} />
 
         <View style={styles.headerTop}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Edit Staff</Text>
             <Text style={styles.headerSub}>Update staff member details</Text>
           </View>
-          {/* ID badge */}
           <View style={styles.idBadge}>
-            <Text style={styles.idBadgeText}>#{id}</Text>
+            <Text style={styles.idBadgeText}>#{params.id}</Text>
           </View>
         </View>
 
         <View style={styles.rolePreviewRow}>
           <View style={styles.rolePreviewPill}>
             <Ionicons
-              name={selectedRole.icon as any}
+              name={params.role === "admin" ? "shield-outline" : "school-outline"}
               size={13}
               color={Colors.white}
             />
-            <Text style={styles.rolePreviewText}>
-              Currently: {selectedRole.label}
-            </Text>
+            <Text style={styles.rolePreviewText}>Currently: {roleLabel}</Text>
           </View>
         </View>
       </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Personal info ── */}
         <Text style={styles.sectionLabel}>Personal Information</Text>
         <View style={styles.formCard}>
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.primaryLight },
-              ]}
-            >
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color={Colors.primary}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="person-outline" size={18} color={Colors.primary} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="Username"
+                label="Full Name"
                 placeholder="e.g. Dr. Okello"
-                value={username}
-                onChangeText={(t) => {
-                  setUsername(t);
-                  setErrors((p) => ({ ...p, username: "" }));
-                }}
+                value={name}
+                onChangeText={(t) => { setName(t); setErrors((p) => ({ ...p, name: "" })); }}
                 icon="person-outline"
-                error={errors.username}
+                error={errors.name}
               />
             </View>
           </View>
@@ -171,12 +145,7 @@ export default function EditStaff() {
           <View style={styles.fieldDivider} />
 
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.accentLight },
-              ]}
-            >
+            <View style={[styles.fieldIcon, { backgroundColor: Colors.accentLight }]}>
               <Ionicons name="mail-outline" size={18} color={Colors.accent} />
             </View>
             <View style={styles.fieldInput}>
@@ -184,97 +153,29 @@ export default function EditStaff() {
                 label="Email Address"
                 placeholder="e.g. okello@gulu.ac.ug"
                 value={email}
-                onChangeText={(t) => {
-                  setEmail(t);
-                  setErrors((p) => ({ ...p, email: "" }));
-                }}
+                onChangeText={(t) => { setEmail(t); setErrors((p) => ({ ...p, email: "" })); }}
                 keyboardType="email-address"
                 icon="mail-outline"
                 error={errors.email}
               />
             </View>
           </View>
-        </View>
 
-        {/* ── Password section ── */}
-        <Text style={styles.sectionLabel}>Change Password</Text>
-        <View style={styles.formCard}>
+          <View style={styles.fieldDivider} />
+
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.fieldIcon,
-                { backgroundColor: Colors.warningLight },
-              ]}
-            >
-              <Ionicons
-                name="lock-closed-outline"
-                size={18}
-                color={Colors.warning}
-              />
+            <View style={[styles.fieldIcon, { backgroundColor: "#EDE9FE" }]}>
+              <Ionicons name="business-outline" size={18} color={Colors.cardPurple} />
             </View>
             <View style={styles.fieldInput}>
               <Input
-                label="New Password"
-                placeholder="Leave blank to keep current"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                icon="lock-closed-outline"
+                label="Department (Optional)"
+                placeholder="e.g. Computer Science"
+                value={department}
+                onChangeText={setDepartment}
+                icon="business-outline"
               />
             </View>
-          </View>
-        </View>
-
-        {/* ── Role section ── */}
-        <Text style={styles.sectionLabel}>Account Role</Text>
-        <View style={styles.formCard}>
-          <Text style={styles.roleHint}>
-            Change the access level for this staff member
-          </Text>
-          <View style={styles.roleRow}>
-            {ROLES.map((r) => {
-              const isActive = role === r.id;
-              return (
-                <TouchableOpacity
-                  key={r.id}
-                  style={[
-                    styles.roleBtn,
-                    isActive && { borderColor: r.color, backgroundColor: r.bg },
-                  ]}
-                  onPress={() => setRole(r.id)}
-                  activeOpacity={0.8}
-                >
-                  <View
-                    style={[
-                      styles.roleBtnIcon,
-                      { backgroundColor: isActive ? r.color : Colors.border },
-                    ]}
-                  >
-                    <Ionicons
-                      name={r.icon as any}
-                      size={16}
-                      color={Colors.white}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.roleBtnText, isActive && { color: r.color }]}
-                  >
-                    {r.label}
-                  </Text>
-                  {isActive && (
-                    <View
-                      style={[styles.roleCheck, { backgroundColor: r.color }]}
-                    >
-                      <Ionicons
-                        name="checkmark"
-                        size={10}
-                        color={Colors.white}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
           </View>
         </View>
 
@@ -286,21 +187,10 @@ export default function EditStaff() {
         </View>
       </ScrollView>
 
-      {/* ── Sticky bottom bar ── */}
-      <View
-        style={[
-          styles.bottomBar,
-          { paddingBottom: insets.bottom + Spacing.md },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.cancelBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.md }]}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()} activeOpacity={0.7}>
           <Text style={styles.cancelBtnText}>Cancel</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
           onPress={handleSubmit}
@@ -330,217 +220,83 @@ export default function EditStaff() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
-    overflow: "hidden",
-  },
+  header: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg, overflow: "hidden" },
   headerShapeL: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    top: -60,
-    right: -40,
+    position: "absolute", width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.05)", top: -60, right: -40,
   },
   headerShapeS: {
-    position: "absolute",
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    bottom: -20,
-    left: -20,
+    position: "absolute", width: 100, height: 100, borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)", bottom: -20, left: -20,
   },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    marginBottom: Spacing.md,
-  },
+  headerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: "center", alignItems: "center",
   },
   headerText: { flex: 1 },
-  headerTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
-  },
-  headerSub: {
-    fontSize: FontSize.sm,
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 2,
-  },
+  headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.white },
+  headerSub: { fontSize: FontSize.sm, color: "rgba(255,255,255,0.7)", marginTop: 2 },
   idBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: Radius.full,
+    paddingHorizontal: Spacing.sm, paddingVertical: 4,
   },
-  idBadgeText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.white,
-  },
+  idBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.white },
   rolePreviewRow: { flexDirection: "row" },
   rolePreviewPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 5,
-    gap: 5,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md, paddingVertical: 5, gap: 5,
   },
-  rolePreviewText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.white,
-  },
+  rolePreviewText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.white },
   body: { paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg },
   sectionLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.subtext,
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
+    fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.subtext,
+    textTransform: "uppercase", letterSpacing: 1.2,
+    marginBottom: Spacing.sm, marginTop: Spacing.md,
   },
   formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
-    ...Shadows.sm,
-    marginBottom: Spacing.sm,
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: Colors.border,
+    overflow: "hidden", ...Shadows.sm, marginBottom: Spacing.sm,
   },
   fieldRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    gap: Spacing.md,
+    flexDirection: "row", alignItems: "flex-start",
+    paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, gap: Spacing.md,
   },
   fieldIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.md,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: Spacing.lg + 2,
+    width: 38, height: 38, borderRadius: Radius.md,
+    justifyContent: "center", alignItems: "center", marginTop: Spacing.lg + 2,
   },
   fieldInput: { flex: 1 },
   fieldDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
+    height: 1, backgroundColor: Colors.border,
     marginLeft: Spacing.md + 38 + Spacing.md,
   },
-  roleHint: {
-    fontSize: FontSize.sm,
-    color: Colors.subtext,
-    padding: Spacing.md,
-    paddingBottom: Spacing.sm,
-  },
-  roleRow: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    padding: Spacing.md,
-    paddingTop: 0,
-  },
-  roleBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    backgroundColor: Colors.background,
-    gap: Spacing.sm,
-    position: "relative",
-  },
-  roleBtnIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  roleBtnText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.subtext,
-    flex: 1,
-  },
-  roleCheck: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   infoNote: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Spacing.sm,
-    backgroundColor: Colors.warningLight,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.warning + "30",
+    flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm,
+    backgroundColor: Colors.warningLight, borderRadius: Radius.lg,
+    padding: Spacing.md, marginTop: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.warning + "30",
   },
   infoNoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
   bottomBar: {
-    flexDirection: "row",
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    gap: Spacing.md,
-    ...Shadows.md,
+    flexDirection: "row", paddingHorizontal: Spacing.lg, paddingTop: Spacing.md,
+    backgroundColor: Colors.surface, borderTopWidth: 1, borderTopColor: Colors.border,
+    gap: Spacing.md, ...Shadows.md,
   },
   cancelBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 1, borderWidth: 1.5, borderColor: Colors.border,
+    borderRadius: Radius.lg, paddingVertical: Spacing.md,
+    alignItems: "center", justifyContent: "center",
   },
-  cancelBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.subtext,
-  },
-  submitBtn: {
-    flex: 2,
-    borderRadius: Radius.lg,
-    overflow: "hidden",
-    ...Shadows.colored,
-  },
+  cancelBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.subtext },
+  submitBtn: { flex: 2, borderRadius: Radius.lg, overflow: "hidden", ...Shadows.colored },
   submitBtnDisabled: { opacity: 0.7 },
   submitGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: Spacing.md, gap: Spacing.sm,
   },
-  submitBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.white,
-  },
+  submitBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.white },
 });

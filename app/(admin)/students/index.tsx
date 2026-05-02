@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
@@ -20,73 +21,42 @@ import {
   Shadows,
   Spacing,
 } from "../../../constants";
+import { useAuth } from "../../../context/AuthContext";
+import { adminAPI } from "../../../services/api";
 
-// TODO: Replace with real API call later
-const STUDENTS = [
-  {
-    id: 1,
-    name: "John Doe",
-    reg_no: "23/U/1234",
-    no: "2300712345",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    reg_no: "23/U/5678",
-    no: "2300756789",
-    course: "BCS",
-    courseColor: Colors.cardTeal,
-  },
-  {
-    id: 3,
-    name: "Peter Okello",
-    reg_no: "23/U/9101",
-    no: "2300791011",
-    course: "BSE",
-    courseColor: Colors.cardGreen,
-  },
-  {
-    id: 4,
-    name: "Mary Akello",
-    reg_no: "23/U/1121",
-    no: "2300711213",
-    course: "BICT",
-    courseColor: Colors.cardBlue,
-  },
-  {
-    id: 5,
-    name: "David Onen",
-    reg_no: "23/U/1415",
-    no: "2300714151",
-    course: "BCS",
-    courseColor: Colors.cardTeal,
-  },
-];
-
-// Course filter options
-const FILTERS = ["All", "BICT", "BCS", "BSE"];
+const AVATAR_COLORS = [Colors.cardBlue, Colors.cardTeal, Colors.cardGreen, Colors.cardPurple];
 
 export default function StudentsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
 
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
 
-  // Filter students by search and course
-  const filtered = STUDENTS.filter((s) => {
-    const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.reg_no.toLowerCase().includes(search.toLowerCase()) ||
-      s.no.includes(search);
-    const matchFilter = activeFilter === "All" || s.course === activeFilter;
-    return matchSearch && matchFilter;
+  useEffect(() => {
+    if (!token) return;
+    adminAPI.getAllStudents(token)
+      .then((data) => setStudents(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = students.filter((s) => {
+    const name = s.user?.full_name ?? "";
+    const regNo = s.student_id_number ?? "";
+    const email = s.user?.email ?? "";
+    return (
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      regNo.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase())
+    );
   });
 
-  const handleOptions = (student: { id: number; name: string }) => {
-    Alert.alert(student.name, "What would you like to do?", [
+  const handleOptions = (student: any) => {
+    const name = student.user?.full_name ?? "Student";
+    Alert.alert(name, "What would you like to do?", [
       {
         text: "View Details",
         onPress: () =>
@@ -96,35 +66,58 @@ export default function StudentsScreen() {
           }),
       },
       {
+        text: "Enroll",
+        onPress: () =>
+          router.push({
+            pathname: "/(admin)/students/enroll",
+            params: {
+              id: student.id.toString(),
+              name: student.user?.full_name ?? "",
+              regNo: student.student_id_number ?? "",
+            },
+          }),
+      },
+      {
         text: "Edit",
         onPress: () =>
           router.push({
             pathname: "/(admin)/students/edit",
-            params: { id: student.id },
+            params: {
+              id: student.id,
+              userId: student.user_id,
+              name: student.user?.full_name ?? "",
+              email: student.user?.email ?? "",
+              regNo: student.student_id_number ?? "",
+              department: student.department ?? "",
+            },
           }),
       },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => confirmDelete(student.id),
+        onPress: () => confirmDelete(student.user_id, name),
       },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
-  const confirmDelete = (id: number) => {
-    Alert.alert(
-      "Delete Student",
-      "Are you sure you want to delete this student?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => console.log("Delete student:", id),
+  const confirmDelete = (userId: number, name: string) => {
+    Alert.alert("Delete Student", `Delete ${name}? This cannot be undone.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          if (!token) return;
+          try {
+            await adminAPI.deleteUser(userId, token);
+            setStudents((prev) => prev.filter((s) => s.user_id !== userId));
+          } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to delete student");
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   return (
@@ -150,7 +143,7 @@ export default function StudentsScreen() {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Students</Text>
             <Text style={styles.headerSub}>
-              {STUDENTS.length} registered students
+              {students.length} registered student{students.length !== 1 ? "s" : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -186,29 +179,6 @@ export default function StudentsScreen() {
         </View>
       </LinearGradient>
 
-      {/* ── Filter chips ── */}
-      <View style={styles.filtersRow}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[
-              styles.filterChip,
-              activeFilter === f && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(f)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeFilter === f && styles.filterChipTextActive,
-              ]}
-            >
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* ── Results count ── */}
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>
@@ -218,87 +188,62 @@ export default function StudentsScreen() {
       </View>
 
       {/* ── List ── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconBox}>
-              <Ionicons
-                name="people-outline"
-                size={40}
-                color={Colors.primary}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>No Students Found</Text>
-            <Text style={styles.emptyText}>
-              {search
-                ? "Try a different search term"
-                : "Tap + to register a new student"}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {/* Left — avatar with course color */}
-            <LinearGradient
-              colors={[item.courseColor, item.courseColor + "CC"]}
-              style={styles.cardAvatar}
-            >
-              <Text style={styles.cardAvatarText}>{item.name[0]}</Text>
-            </LinearGradient>
-
-            {/* Middle — info */}
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName}>{item.name}</Text>
-              <View style={styles.cardMetaRow}>
-                <Ionicons
-                  name="card-outline"
-                  size={12}
-                  color={Colors.subtext}
-                />
-                <Text style={styles.cardMeta}>{item.reg_no}</Text>
+      {loading ? (
+        <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconBox}>
+                <Ionicons name="people-outline" size={40} color={Colors.primary} />
               </View>
-              <View style={styles.cardMetaRow}>
-                <Ionicons
-                  name="person-outline"
-                  size={12}
-                  color={Colors.subtext}
-                />
-                <Text style={styles.cardMeta}>{item.no}</Text>
-              </View>
+              <Text style={styles.emptyTitle}>No Students Found</Text>
+              <Text style={styles.emptyText}>
+                {search ? "Try a different search term" : "No students registered yet"}
+              </Text>
             </View>
-
-            {/* Right — course badge + menu */}
-            <View style={styles.cardRight}>
-              <View
-                style={[
-                  styles.courseBadge,
-                  { backgroundColor: item.courseColor + "18" },
-                ]}
-              >
-                <Text
-                  style={[styles.courseBadgeText, { color: item.courseColor }]}
+          }
+          renderItem={({ item, index }) => {
+            const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
+            const name = item.user?.full_name ?? "Unknown";
+            return (
+              <View style={styles.card}>
+                <LinearGradient
+                  colors={[color, color + "CC"]}
+                  style={styles.cardAvatar}
                 >
-                  {item.course}
-                </Text>
+                  <Text style={styles.cardAvatarText}>{name[0]}</Text>
+                </LinearGradient>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>{name}</Text>
+                  <View style={styles.cardMetaRow}>
+                    <Ionicons name="card-outline" size={12} color={Colors.subtext} />
+                    <Text style={styles.cardMeta}>{item.student_id_number}</Text>
+                  </View>
+                  <View style={styles.cardMetaRow}>
+                    <Ionicons name="mail-outline" size={12} color={Colors.subtext} />
+                    <Text style={styles.cardMeta}>{item.user?.email}</Text>
+                  </View>
+                </View>
+                <View style={styles.cardRight}>
+                  <View style={[styles.courseBadge, { backgroundColor: color + "18" }]}>
+                    <Text style={[styles.courseBadgeText, { color }]}>
+                      {item.department ?? "N/A"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.menuBtn} onPress={() => handleOptions(item)}>
+                    <Ionicons name="ellipsis-vertical" size={18} color={Colors.subtext} />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity
-                style={styles.menuBtn}
-                onPress={() => handleOptions(item)}
-              >
-                <Ionicons
-                  name="ellipsis-vertical"
-                  size={18}
-                  color={Colors.subtext}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
