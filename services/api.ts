@@ -21,15 +21,29 @@ export async function apiCall(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  });
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  const method = fetchOptions.method || "GET";
+  console.log(`[API] ${method} ${fullUrl}`);
+
+  const startTime = Date.now();
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, { ...fetchOptions, headers });
+  } catch (err: any) {
+    console.error(`[API] NETWORK ERROR for ${method} ${fullUrl}`);
+    console.error("[API] Error name:", err?.name);
+    console.error("[API] Error message:", err?.message);
+    console.error("[API] Error stack:", err?.stack);
+    throw err;
+  }
+
+  console.log(`[API] ${method} ${endpoint} → ${response.status} (${Date.now() - startTime}ms)`);
 
   if (!response.ok) {
     let message = "API request failed";
     try {
       const error = await response.json();
+      console.warn(`[API] Error body for ${endpoint}:`, error);
       message = error.detail || message;
     } catch {
       // Response body is not JSON — keep default message

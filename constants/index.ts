@@ -139,7 +139,7 @@ export const Shadows = {
 };
 
 // ── API ────────────────────────────────────────────────────
-export const API_BASE_URL = "http://localhost:5000/api";
+export const API_BASE_URL = "http://31.97.44.199:3000/api";
 export const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 export const GEMINI_API_KEY = "your_key_here";

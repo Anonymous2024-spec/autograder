@@ -8,7 +8,7 @@ export default function AdminLayout() {
 
       {/* students */}
       <Stack.Screen
-        name="students"
+        name="students/index"
         options={{ headerShown: true, title: "Students" }}
       />
       <Stack.Screen name="students/register" options={{ headerShown: false }} />
@@ -16,17 +16,17 @@ export default function AdminLayout() {
       <Stack.Screen name="students/enroll" options={{ headerShown: false }} />
       <Stack.Screen name="students/detail" options={{ headerShown: false }} />
 
-      {/* staff/index.tsx → name is "staff" */}
+      {/* staff */}
       <Stack.Screen
-        name="staff"
+        name="staff/index"
         options={{ headerShown: true, title: "Staff" }}
       />
       <Stack.Screen name="staff/register" options={{ headerShown: false }} />
       <Stack.Screen name="staff/edit" options={{ headerShown: false }} />
 
-      {/* courses/index.tsx → name is "courses" */}
+      {/* courses */}
       <Stack.Screen
-        name="courses"
+        name="courses/index"
         options={{ headerShown: true, title: "Courses" }}
       />
       <Stack.Screen name="courses/register" options={{ headerShown: false }} />
@@ -42,20 +42,26 @@ export default function AdminLayout() {
          name="courses/units/edit"
          options={{ headerShown: false }}
        />
+       <Stack.Screen
+         name="courses/units/upload-guide"
+         options={{ headerShown: false }}
+       />
 
        {/* units standalone */}
        <Stack.Screen
-         name="units"
+         name="units/index"
          options={{ headerShown: true, title: "Course Units" }}
        />
        <Stack.Screen name="units/create" options={{ headerShown: false }} />
        <Stack.Screen name="units/edit" options={{ headerShown: false }} />
 
        <Stack.Screen
-         name="questions"
+         name="questions/index"
          options={{ headerShown: true, title: "Questions" }}
        />
        <Stack.Screen name="questions/create" options={{ headerShown: false }} />
+       <Stack.Screen name="questions/edit" options={{ headerShown: false }} />
+       <Stack.Screen name="questions/sheet" options={{ headerShown: false }} />
     </Stack>
   );
 }
