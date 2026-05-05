@@ -60,19 +60,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setError(null);
 
+    const url = `${API_BASE_URL}/auth/login`;
+    console.log("[AUTH] Login attempt");
+    console.log("[AUTH] URL:", url);
+    console.log("[AUTH] Email:", email);
+
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const startTime = Date.now();
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      console.log("[AUTH] Response received in", Date.now() - startTime, "ms");
+      console.log("[AUTH] Status:", response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.warn("[AUTH] Login error response:", errorData);
         throw new Error(errorData.detail || "Invalid email or password");
       }
 
       const data = await response.json();
+      console.log("[AUTH] Login success, user role:", data.user?.role);
 
       setToken(data.access_token);
       setUser(data.user);
@@ -84,7 +94,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("SecureStore unavailable:", storeErr);
       }
     } catch (err: any) {
-      const errorMessage = err.message || "Login failed. Please try again.";
+      console.error("[AUTH] Login FAILED");
+      console.error("[AUTH] Error name:", err?.name);
+      console.error("[AUTH] Error message:", err?.message);
+      console.error("[AUTH] Error stack:", err?.stack);
+      // Provide a more actionable message for network failures
+      const isNetworkError =
+        err?.message === "Network request failed" ||
+        err?.name === "TypeError";
+      const errorMessage = isNetworkError
+        ? `Network request failed — cannot reach ${API_BASE_URL}. Check that the server is running and accessible from this device.`
+        : err.message || "Login failed. Please try again.";
       setError(errorMessage);
       throw new Error(errorMessage);
     }

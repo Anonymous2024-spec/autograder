@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.autograder.mcq"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,8 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.autograder.mcq"
+      "package": "com.autograder.mcq",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
